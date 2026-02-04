@@ -235,16 +235,28 @@ async function handleJoinLobby() {
   const name = document.getElementById('playerName').value.trim();
   const code = document.getElementById('joinCode').value.trim().toUpperCase();
   
+  if (!name || !code) return alert("Please enter both your name and the room code");
+
+  // Fetch the room data from Firebase instead of localStorage
   const snapshot = await db.ref('lobbies/' + code).get();
-  if (!snapshot.exists()) return alert("Lobby not found");
+  
+  if (!snapshot.exists()) {
+    return alert("Lobby not found. Please check the code and try again.");
+  }
 
   const data = snapshot.val();
+  
+  // Add the new player to the Firebase players array if they aren't already in it
   if (!data.players.includes(name)) {
     data.players.push(name);
     await db.ref('lobbies/' + code + '/players').set(data.players);
   }
 
-  currentLobby = code; myName = name; isHost = false;
+  // Set local state and begin real-time sync
+  currentLobby = code; 
+  myName = name; 
+  isHost = false;
+  
   setupLobby();
 }
 
