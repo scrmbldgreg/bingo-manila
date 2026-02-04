@@ -410,7 +410,7 @@ function generateCard() {
   tbody.innerHTML = '';
   
   const cardTitle = document.getElementById('cardOwnerName');
-  if (myName) cardTitle.textContent = `${myName}'s Card`;
+  if (myName) cardTitle.textContent = `${myName}`;
 
   const brandColors = ['#002147', '#b91c1c'];
   const selectedCardColor = brandColors[Math.floor(Math.random() * brandColors.length)];
