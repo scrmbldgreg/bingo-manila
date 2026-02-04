@@ -8,7 +8,8 @@
   <style>
     :root {
       --london-blue: #002147;
-      --royal-red: #e4002b;
+      /* Adjusted to a deeper, less bright red */
+      --royal-red: #b91c1c; 
     }
     .bg-london-blue { background-color: var(--london-blue); }
     .text-london-blue { color: var(--london-blue); }
@@ -48,8 +49,8 @@
 <body class="bg-slate-50 min-h-screen flex flex-col items-center p-4 font-sans text-slate-900">
 
   <div class="flex flex-col items-center mb-8">
-    <div class="w-32 h-32 bg-london-blue rounded-full border-4 border-white shadow-lg flex items-center justify-center overflow-hidden mb-2">
-      <img src="https://i.ibb.co/LhY07N7/big-ben-manila.png" alt="Big Ben Manila Logo" class="w-full h-full object-contain p-2">
+    <div class="w-32 h-32 rounded-full border-4 border-white shadow-lg flex items-center justify-center overflow-hidden mb-2">
+      <img src="https://scrmbldgreg.github.io/bingo-manila/assets/bigbenmnl.png" alt="Big Ben Manila Logo" class="w-full h-full object-contain p-2">
     </div>
     <h1 class="text-2xl font-black tracking-tighter text-london-blue uppercase">Big Ben Manila Bingo</h1>
   </div>
@@ -129,7 +130,7 @@
             <div class="flex justify-between items-center mb-6 text-white">
               <div class="flex flex-col">
                 <h2 id="cardOwnerName" class="text-2xl font-black uppercase italic tracking-tighter">Your Card</h2>
-                <span class="text-[10px] opacity-75 uppercase font-bold tracking-tighter">Big Ben Manila Official Issue</span>
+                <span class="text-[10px] opacity-75 uppercase font-bold tracking-tighter">Big Ben Manila</span>
               </div>
               <button id="btnNewCard" onclick="generateCard()" class="bg-white text-london-blue px-6 py-2 rounded-xl font-black text-sm shadow-xl active:scale-95 transition">NEW CARD</button>
             </div>
@@ -148,10 +149,25 @@
                 <tbody class="bg-white rounded-2xl overflow-hidden"></tbody>
               </table>
             </div>
-          </div> </div>
+          </div> 
+        </div>
       </div>
     </div>
   </div>
+  <footer class="mt-16 mb-12 flex flex-col items-center gap-6 opacity-60">
+    <div class="h-px w-32 bg-slate-300"></div>
+
+    <div class="flex items-center gap-3">
+      <img src="https://scrmbldgreg.github.io/bingo-manila/assets/gemini-ai-logo.png" alt="Gemini Logo" class="w-6 h-6 animate-pulse">
+      <p class="text-[10px] font-bold tracking-[0.2em] text-london-blue uppercase">
+        Powered by Gemini AI
+      </p>
+    </div>
+
+    <a href="https://scrmbldgreg.github.io/bingo-manila/" target="_blank" class="hover:opacity-80 transition-opacity">
+      <img src="https://scrmbldgreg.github.io/bingo-manila/assets/_scrmbldgreg.png" alt="SCRMBLDGREG Logo" class="h-8 object-contain">
+    </a>
+  </footer>
 
 <script>
 /* ================= SYSTEM CORE ================= */
@@ -245,10 +261,15 @@ function toggleJackpotMode() {
 
 function updateStorage() {
   const data = JSON.parse(localStorage.getItem('bingo_' + currentLobby));
+  // Preserve existing winners array so it's not overwritten by new calls
   const existingWinners = data.gameState ? (data.gameState.winners || []) : [];
+  
   data.gameState = { 
-    calledNumbers, isJackpotMode, gameStarted, winners: existingWinners,
-    lastNum: calledNumbers[calledNumbers.length-1] 
+    calledNumbers, 
+    isJackpotMode, 
+    gameStarted, 
+    winners: existingWinners,
+    lastNum: calledNumbers[calledNumbers.length-1] || '-'
   };
   localStorage.setItem('bingo_' + currentLobby, JSON.stringify(data));
   render(data.gameState);
@@ -388,7 +409,7 @@ function generateCard() {
   const cardTitle = document.getElementById('cardOwnerName');
   if (myName) cardTitle.textContent = `${myName}'s Card`;
 
-  const brandColors = ['#002147', '#e4002b'];
+  const brandColors = ['#002147', '#b91c1c'];
   const selectedCardColor = brandColors[Math.floor(Math.random() * brandColors.length)];
   document.getElementById('cardWrapper').style.backgroundColor = selectedCardColor;
 
