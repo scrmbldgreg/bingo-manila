@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Bingo Manila</title>
+  <title>BENgo Manila</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -86,8 +86,8 @@
                 <span class="text-[10px] opacity-75 uppercase font-bold">Big Ben Manila Official</span>
               </div>
               <div class="flex gap-2">
-                <button onclick="downloadCard()" class="bg-green-600 text-white px-3 py-2 rounded-xl font-bold text-xs shadow-xl active:scale-95 transition">SAVE</button>
-                <button id="btnNewCard" onclick="generateCard()" class="bg-white text-london-blue px-3 py-2 rounded-xl font-bold text-xs shadow-xl active:scale-95 transition">NEW CARD</button>
+                <button onclick="downloadCard()" class="bg-green-600 text-white px-3 py-2 rounded-xl font-bold text-xs shadow-xl active:scale-95 transition">DOWNLOAD</button>
+                <button id="btnNewCard" onclick="generateCard()" class="bg-white text-london-blue px-3 py-2 rounded-xl font-bold text-xs shadow-xl active:scale-95 transition">REFRESH</button>
               </div>
             </div>
             <div class="flex justify-center overflow-x-auto pb-4">
@@ -115,9 +115,9 @@
           <button id="btnStartGame" onclick="triggerStartGame()" class="w-full bg-royal-red text-white font-bold py-3 rounded-xl shadow-lg transition">START GAME</button>
           <div id="activeHostButtons" class="hidden space-y-3">
             <button onclick="callNumber()" class="w-full bg-green-500 text-white font-bold py-3 rounded-xl shadow-inner active:scale-95 transition">CALL NUMBER</button>
-            <button onclick="toggleJackpotMode()" id="jackpotBtn" class="w-full border-2 border-white/30 hover:bg-white/10 py-2 rounded-xl text-sm font-bold transition uppercase">Blackout Mode</button>
+            <button onclick="toggleJackpotMode()" id="jackpotBtn" class="w-full border-2 border-white/30 hover:bg-white/10 py-2 rounded-xl text-sm font-bold transition uppercase">BLACKOUT</button>
           </div>
-          <button onclick="resetBingo()" class="w-full text-white/50 text-[10px] font-bold pt-2 uppercase">Reset Game State</button>
+          <button onclick="resetBingo()" class="w-full text-white/50 text-[10px] font-bold pt-2 uppercase">RESET GAME STATE</button>
         </div>
       </div>
     </div>
@@ -276,7 +276,7 @@ async function kickPlayer(playerToKick) {
 }
 
 function resetBingo() {
-  if (!isHost || !confirm("Reset?")) return;
+  if (!isHost || !confirm("Reset game?")) return;
   gameNumbersPool = Array.from({length: 75}, (_, i) => i + 1);
   db.ref('lobbies/' + currentLobby + '/gameState').set({ calledNumbers: [], isJackpotMode: false, gameStarted: false, winners: [], lastNum: '-' });
   document.getElementById('btnStartGame').classList.remove('hidden');
@@ -333,11 +333,11 @@ function render(state) {
   } else {
     btn.disabled = false;
     btn.className = "bg-white text-london-blue px-3 py-2 rounded-xl font-bold text-xs shadow-xl transition";
-    btn.textContent = "NEW CARD";
+    btn.textContent = "REFRESH";
     clearCardMarksUI();
   }
   document.getElementById('jackpotStatus').classList.toggle('hidden', !state.isJackpotMode);
-  document.getElementById('jackpotBtn').textContent = state.isJackpotMode ? "BLACKOUT ON" : "BLACKOUT OFF";
+  document.getElementById('jackpotBtn').textContent = state.isJackpotMode ? "CLASSIC BINGO" : "BLACKOUT";
 }
 
 function clearCardMarksUI() {
@@ -368,7 +368,7 @@ function generateCard() {
         td.textContent="FREE"; td.classList.add('bg-royal-red', 'marked', 'text-white', 'text-[10px]'); 
       } else { 
         td.textContent = val; td.dataset.label = label; 
-        td.onclick = () => { if (calledNumbers.includes(label)) { td.classList.toggle('marked'); checkWin(); } else { alert("Not called!"); } };
+        td.onclick = () => { if (calledNumbers.includes(label)) { td.classList.toggle('marked'); checkWin(); } else { alert("Number not drawn yet!"); } };
       }
       tr.appendChild(td);
     }
