@@ -5,52 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Bingo Manila</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
   <style>
-    :root {
-      --london-blue: #002147;
-      /* Muted Royal Red */
-      --royal-red: #991b1b; 
-    }
+    :root { --london-blue: #002147; --royal-red: #991b1b; }
     .bg-london-blue { background-color: var(--london-blue); }
     .text-london-blue { color: var(--london-blue); }
     .bg-royal-red { background-color: var(--royal-red); }
-    
-    /* Bingo Chip Style */
     .marked { position: relative; background-color: #10b981 !important; color: white !important; }
-    .marked::after {
-      content: '✖';
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      color: rgba(255,255,255,0.4);
-      font-size: 1.5rem;
-    }
-
-    /* Winning Strike-through */
+    .marked::after { content: '✖'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: rgba(255,255,255,0.4); font-size: 1.5rem; }
     .winning-cell { position: relative; background-color: #fef08a !important; color: #854d0e !important; }
-    .winning-cell::after {
-      content: '';
-      position: absolute;
-      top: 50%;
-      left: 0;
-      width: 100%;
-      height: 4px;
-      background-color: var(--royal-red);
-      transform: translateY(-50%);
-      z-index: 10;
-      pointer-events: none;
-    }
-
+    .winning-cell::after { content: ''; position: absolute; top: 50%; left: 0; width: 100%; height: 4px; background-color: var(--royal-red); transform: translateY(-50%); z-index: 10; pointer-events: none; }
     #historyBox::-webkit-scrollbar { width: 6px; }
     #historyBox::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
   </style>
-
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-
 </head>
 <body class="bg-slate-50 min-h-screen flex flex-col items-center p-4 font-sans text-slate-900">
 
@@ -69,7 +38,7 @@
   <div id="screenCreate" class="hidden bg-white p-8 rounded-3xl shadow-xl w-full max-w-md border-t-8 border-london-blue">
     <h2 class="text-xl font-bold mb-4 text-london-blue">Host a Game</h2>
     <input id="hostName" type="text" placeholder="Your Name" class="border-2 rounded-xl p-3 w-full mb-4 outline-none focus:border-london-blue">
-    <button onclick="handleCreateLobby()" class="bg-london-blue text-white font-bold py-3 rounded-xl w-full">Generate Lobby</button>
+    <button onclick="handleCreateLobby()" class="bg-london-blue text-white font-bold py-3 rounded-xl w-full uppercase">Generate Lobby</button>
     <button onclick="showScreen('screenInitial')" class="text-slate-400 mt-4 w-full text-sm hover:underline text-center">← Cancel</button>
   </div>
 
@@ -77,7 +46,7 @@
     <h2 class="text-xl font-bold mb-4 text-royal-red">Join Room</h2>
     <input id="playerName" type="text" placeholder="Your Name" class="border-2 rounded-xl p-3 w-full mb-3 outline-none focus:border-royal-red">
     <input id="joinCode" type="text" placeholder="Room Code" class="border-2 rounded-xl p-3 w-full mb-4 outline-none uppercase tracking-widest text-center font-bold">
-    <button onclick="handleJoinLobby()" class="bg-royal-red text-white font-bold py-3 rounded-xl w-full">Enter Room</button>
+    <button onclick="handleJoinLobby()" class="bg-royal-red text-white font-bold py-3 rounded-xl w-full uppercase">Enter Room</button>
     <button onclick="showScreen('screenInitial')" class="text-slate-400 mt-4 w-full text-sm hover:underline text-center">← Cancel</button>
   </div>
 
@@ -93,12 +62,11 @@
       </h3>
       <ul id="playerList" class="space-y-2"></ul>
     </div>
-    <button onclick="enterGamePanel()" class="bg-london-blue text-white font-bold py-4 rounded-2xl w-full shadow-xl hover:scale-[1.02] transition transform">ENTER GAME PANEL</button>
+    <button onclick="enterGamePanel()" class="bg-london-blue text-white font-bold py-4 rounded-2xl w-full shadow-xl hover:scale-[1.02] transition">ENTER GAME PANEL</button>
   </div>
 
   <div id="gameArea" class="hidden w-full max-w-6xl flex flex-col gap-6">
     <div class="grid lg:grid-cols-4 gap-6">
-
       <div class="lg:col-span-3 space-y-6">
         <div class="grid md:grid-cols-3 gap-6">
           <div class="bg-white p-6 rounded-3xl shadow-lg flex flex-col border-t-8 border-london-blue">
@@ -111,31 +79,21 @@
               <div id="historyBox" class="text-[18px] text-slate-500 h-80 overflow-y-auto pr-2 font-mono flex flex-wrap gap-2 content-start scroll-smooth"></div>
             </div>
           </div>
-
           <div id="cardWrapper" class="md:col-span-2 p-6 rounded-3xl shadow-2xl transition-all border-london-blue border-8 overflow-hidden">
             <div class="flex justify-between items-center mb-6 text-white">
               <div class="flex flex-col">
                 <h2 id="cardOwnerName" class="text-2xl font-black uppercase italic tracking-tighter">Your Card</h2>
-                <span class="text-[10px] opacity-75 uppercase font-bold tracking-tighter">Big Ben Manila</span>
+                <span class="text-[10px] opacity-75 uppercase font-bold">Big Ben Manila Official</span>
               </div>
               <div class="flex gap-2">
-                <button onclick="downloadCard()" class="bg-green-500 text-white px-4 py-2 rounded-xl font-black text-sm shadow-xl active:scale-95 transition flex items-center gap-2">
-                  <span>DOWNLOAD</span>
-                </button>
-                <button id="btnNewCard" onclick="generateCard()" class="bg-white text-london-blue px-6 py-2 rounded-xl font-black text-sm shadow-xl active:scale-95 transition">CHANGE CARD</button>
+                <button onclick="downloadCard()" class="bg-green-600 text-white px-3 py-2 rounded-xl font-bold text-xs shadow-xl active:scale-95 transition">SAVE</button>
+                <button id="btnNewCard" onclick="generateCard()" class="bg-white text-london-blue px-3 py-2 rounded-xl font-bold text-xs shadow-xl active:scale-95 transition">NEW CARD</button>
               </div>
             </div>
-            
             <div class="flex justify-center overflow-x-auto pb-4">
               <table id="bingoCard" class="border-separate border-spacing-2">
                 <thead class="text-white font-black text-3xl">
-                  <tr>
-                    <th class="w-16 h-12">B</th>
-                    <th class="w-16 h-12">I</th>
-                    <th class="w-16 h-12">N</th>
-                    <th class="w-16 h-12">G</th>
-                    <th class="w-16 h-12">O</th>
-                  </tr>
+                  <tr><th>B</th><th>I</th><th>N</th><th>G</th><th>O</th></tr>
                 </thead>
                 <tbody class="bg-white rounded-2xl overflow-hidden"></tbody>
               </table>
@@ -143,30 +101,25 @@
           </div> 
         </div>
       </div>
-
       <div class="lg:col-span-1 space-y-6">
         <div class="bg-white p-6 rounded-3xl shadow-md border-b-4 border-slate-200">
           <div class="mb-4 text-center">
             <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Room Code</span>
             <div id="gameRoomCode" class="text-2xl font-black text-london-blue tracking-widest">XXXXX</div>
           </div>
-          <h3 class="font-bold text-slate-400 text-xs uppercase mb-4 tracking-widest border-t pt-4">Lobby Players</h3>
+          <h3 class="font-bold text-slate-400 text-xs uppercase mb-4 tracking-widest border-t pt-4">Players</h3>
           <ul id="gamePlayerList" class="space-y-2"></ul>
-          <div id="jackpotStatus" class="mt-4 text-center p-2 bg-royal-red text-white rounded-lg text-xs font-bold hidden animate-bounce">BLACKOUT MODE ACTIVE</div>
+          <div id="jackpotStatus" class="mt-4 text-center p-2 bg-royal-red text-white rounded-lg text-xs font-bold hidden animate-bounce">BLACKOUT MODE</div>
         </div>
-
         <div id="hostControlsPanel" class="hidden bg-london-blue p-6 rounded-3xl shadow-xl text-white space-y-3">
-          <p class="text-[10px] font-bold opacity-60 uppercase">Host Control Panel</p>
-          <button id="btnStartGame" onclick="triggerStartGame()" class="w-full bg-royal-red text-white font-bold py-3 rounded-xl shadow-lg hover:brightness-110 transition">START GAME</button>
+          <button id="btnStartGame" onclick="triggerStartGame()" class="w-full bg-royal-red text-white font-bold py-3 rounded-xl shadow-lg transition">START GAME</button>
           <div id="activeHostButtons" class="hidden space-y-3">
             <button onclick="callNumber()" class="w-full bg-green-500 text-white font-bold py-3 rounded-xl shadow-inner active:scale-95 transition">CALL NUMBER</button>
-            <button onclick="toggleJackpotMode()" id="jackpotBtn" class="w-full border-2 border-white/30 hover:bg-white/10 py-2 rounded-xl text-sm font-bold transition">BLACKOUT MODE</button>
+            <button onclick="toggleJackpotMode()" id="jackpotBtn" class="w-full border-2 border-white/30 hover:bg-white/10 py-2 rounded-xl text-sm font-bold transition uppercase">Blackout Mode</button>
           </div>
-          <button onclick="resetBingo()" class="w-full text-white/50 text-[10px] font-bold pt-2 hover:text-white transition uppercase">Reset Game State</button>
+          <button onclick="resetBingo()" class="w-full text-white/50 text-[10px] font-bold pt-2 uppercase">Reset Game State</button>
         </div>
       </div>
-
-
     </div>
   </div>
 
@@ -176,10 +129,8 @@
       <img src="https://scrmbldgreg.github.io/bingo-manila/assets/gemini-ai-logo.png" alt="Gemini Logo" class="w-6 h-6 animate-pulse">
       <p class="text-[10px] font-bold tracking-[0.2em] text-london-blue uppercase">Powered by Gemini AI</p>
     </div>
-    <a href="https://scrmbldgreg.github.io/bingo-manila/" target="_blank" class="hover:opacity-100 transition-opacity">
-      <img src="https://scrmbldgreg.github.io/bingo-manila/assets/scrmbldgreg.png" alt="SCRMBLDGREG Logo" class="h-8 object-contain">
-    </a>
-    <p class="text-[9px] font-medium text-slate-400 tracking-wider uppercase mt-2">&copy; 2026 Big Ben Manila</p>
+    <img src="https://scrmbldgreg.github.io/bingo-manila/assets/scrmbldgreg.png" alt="SCRMBLDGREG Logo" class="h-8 object-contain">
+    <p class="text-[9px] font-medium text-slate-400 tracking-wider uppercase">&copy; 2026 Big Ben Manila</p>
   </footer>
 
 <script>
@@ -194,39 +145,29 @@ const firebaseConfig = {
   measurementId: "G-4Q004H7XWG"
 };
 
-// Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-/* ================= GLOBAL STATE ================= */
 let currentLobby = null, myName = null, isHost = false;
 let gameNumbersPool = [], calledNumbers = [], isJackpotMode = false, gameStarted = false;
 
-/* ================= NAVIGATION ================= */
 function showScreen(id) {
   ['screenInitial', 'screenCreate', 'screenJoin', 'screenLobbyRoom', 'gameArea'].forEach(s => 
     document.getElementById(s).classList.add('hidden'));
   document.getElementById(id).classList.remove('hidden');
 }
 
-/* ================= LOBBY LOGIC (FIREBASE) ================= */
+/* ================= UPDATED CLOUD LOGIC ================= */
+
 async function handleCreateLobby() {
   const name = document.getElementById('hostName').value.trim();
   if (!name) return alert("Please enter your name");
-  
   const code = Math.random().toString(36).substring(2, 7).toUpperCase();
   currentLobby = code; myName = name; isHost = true;
 
   await db.ref('lobbies/' + code).set({
-    host: name,
-    players: [name],
-    gameState: { 
-      calledNumbers: [], 
-      isJackpotMode: false, 
-      gameStarted: false, 
-      winners: [], 
-      lastNum: '-' 
-    }
+    host: name, players: [name],
+    gameState: { calledNumbers: [], isJackpotMode: false, gameStarted: false, winners: [], lastNum: '-' }
   });
   setupLobby();
 }
@@ -234,29 +175,17 @@ async function handleCreateLobby() {
 async function handleJoinLobby() {
   const name = document.getElementById('playerName').value.trim();
   const code = document.getElementById('joinCode').value.trim().toUpperCase();
-  
-  if (!name || !code) return alert("Please enter both your name and the room code");
+  if (!name || !code) return alert("Enter name and code");
 
-  // Fetch the room data from Firebase instead of localStorage
   const snapshot = await db.ref('lobbies/' + code).get();
-  
-  if (!snapshot.exists()) {
-    return alert("Lobby not found. Please check the code and try again.");
-  }
+  if (!snapshot.exists()) return alert("Lobby not found");
 
   const data = snapshot.val();
-  
-  // Add the new player to the Firebase players array if they aren't already in it
   if (!data.players.includes(name)) {
     data.players.push(name);
     await db.ref('lobbies/' + code + '/players').set(data.players);
   }
-
-  // Set local state and begin real-time sync
-  currentLobby = code; 
-  myName = name; 
-  isHost = false;
-  
+  currentLobby = code; myName = name; isHost = false;
   setupLobby();
 }
 
@@ -264,31 +193,22 @@ function setupLobby() {
   document.getElementById('displayCode').textContent = currentLobby;
   showScreen('screenLobbyRoom');
 
-  // Unified Real-time listener
   db.ref('lobbies/' + currentLobby).on('value', (snapshot) => {
     const data = snapshot.val();
     if (!data) return;
 
-    // Kick Check
     if (!data.players.includes(myName)) {
-      alert("You have been removed from the room.");
+      alert("You have been removed.");
       location.reload();
       return;
     }
 
-    // Update Global Variables from Firebase
-    gameStarted = data.gameState.gameStarted;
-    calledNumbers = data.gameState.calledNumbers || [];
-    isJackpotMode = data.gameState.isJackpotMode;
-
-    // UI Sync
     updatePlayerUI(data.players, data.host, data.gameState.winners || []);
     render(data.gameState);
   });
 }
 
 function updatePlayerUI(players, hostName, winnerList) {
-  // Update Lobby Screen List
   const lobbyList = document.getElementById('playerList');
   if (lobbyList) {
     lobbyList.innerHTML = players.map(p => `
@@ -298,28 +218,22 @@ function updatePlayerUI(players, hostName, winnerList) {
       </li>`).join('');
   }
 
-  // Update Game Screen Sidebar
   const gameList = document.getElementById('gamePlayerList');
   gameList.innerHTML = players.map(p => {
     const isWinner = winnerList.includes(p);
     const kickBtn = (isHost && p !== myName) ? 
-      `<button onclick="kickPlayer('${p}')" class="ml-2 text-royal-red hover:text-red-700 font-bold text-[10px] uppercase border border-red-200 px-2 py-1 rounded-md hover:bg-red-50 transition">Kick</button>` : '';
-    
+      `<button onclick="kickPlayer('${p}')" class="ml-2 text-royal-red font-bold text-[8px] uppercase border border-red-200 px-2 py-1 rounded-md transition">Kick</button>` : '';
     return `
       <li class="flex items-center justify-between p-3 rounded-xl border-2 transition-all ${isWinner ? 'bg-yellow-50 border-yellow-400 shadow-lg' : 'bg-slate-50 border-slate-100'}">
         <div class="flex items-center gap-2">
           <div class="w-2 h-2 rounded-full ${isWinner ? 'bg-yellow-500 animate-pulse' : 'bg-green-500'}"></div>
           <span class="text-sm font-bold ${isWinner ? 'text-yellow-900' : 'text-slate-700'}">${p}</span>
         </div>
-        <div class="flex items-center gap-2">
-          ${isWinner ? '<span class="text-[9px] bg-yellow-500 text-white px-2 py-0.5 rounded-full font-black uppercase">WINNER</span>' : ''}
-          ${kickBtn}
-        </div>
+        <div class="flex items-center gap-2">${isWinner ? '<span class="text-[9px] bg-yellow-500 text-white px-2 py-0.5 rounded-full font-black uppercase">WINNER</span>' : ''}${kickBtn}</div>
       </li>`;
   }).join('');
 }
 
-/* ================= GAME ACTIONS ================= */
 function enterGamePanel() {
   showScreen('gameArea');
   document.getElementById('gameRoomCode').textContent = currentLobby;
@@ -331,35 +245,24 @@ function enterGamePanel() {
 }
 
 function triggerStartGame() {
-  if (!confirm("Start Game? This locks all player cards.")) return;
-  db.ref('lobbies/' + currentLobby + '/gameState').update({
-    gameStarted: true,
-    calledNumbers: [],
-    winners: [],
-    lastNum: '-'
-  });
+  if (!confirm("Start Game?")) return;
+  db.ref('lobbies/' + currentLobby + '/gameState').update({ gameStarted: true, winners: [], calledNumbers: [], lastNum: '-' });
   document.getElementById('btnStartGame').classList.add('hidden');
   document.getElementById('activeHostButtons').classList.remove('hidden');
 }
 
 function callNumber() {
-  if (gameNumbersPool.length === 0) return alert("All numbers called!");
+  if (gameNumbersPool.length === 0) return alert("Done!");
   const idx = Math.floor(Math.random() * gameNumbersPool.length);
   const num = gameNumbersPool.splice(idx, 1)[0];
   const label = (num<=15?'B':num<=30?'I':num<=45?'N':num<=60?'G':'O') + "-" + num;
   calledNumbers.push(label);
-  
-  db.ref('lobbies/' + currentLobby + '/gameState').update({
-    calledNumbers: calledNumbers,
-    lastNum: label
-  });
+  db.ref('lobbies/' + currentLobby + '/gameState').update({ calledNumbers, lastNum: label });
 }
 
 function toggleJackpotMode() {
-  if (gameStarted && calledNumbers.length > 0) return alert("Game in progress!");
   isJackpotMode = !isJackpotMode;
-  db.ref('lobbies/' + currentLobby + '/gameState').update({ isJackpotMode: isJackpotMode });
-  document.getElementById('jackpotBtn').textContent = isJackpotMode ? "MODE: BLACKOUT" : "MODE: STANDARD";
+  db.ref('lobbies/' + currentLobby + '/gameState').update({ isJackpotMode });
 }
 
 async function kickPlayer(playerToKick) {
@@ -371,23 +274,15 @@ async function kickPlayer(playerToKick) {
 }
 
 function resetBingo() {
-  if (!isHost || !confirm("Reset game?")) return;
+  if (!isHost || !confirm("Reset?")) return;
   gameNumbersPool = Array.from({length: 75}, (_, i) => i + 1);
-  db.ref('lobbies/' + currentLobby + '/gameState').set({
-    calledNumbers: [],
-    isJackpotMode: false,
-    gameStarted: false,
-    winners: [],
-    lastNum: '-'
-  });
+  db.ref('lobbies/' + currentLobby + '/gameState').set({ calledNumbers: [], isJackpotMode: false, gameStarted: false, winners: [], lastNum: '-' });
   document.getElementById('btnStartGame').classList.remove('hidden');
   document.getElementById('activeHostButtons').classList.add('hidden');
 }
 
-/* ================= WIN LOGIC ================= */
 function checkWin() {
-  const board = Array.from(document.querySelectorAll('#bingoCard tr')).slice(1)
-               .map(tr => Array.from(tr.querySelectorAll('td')));
+  const board = Array.from(document.querySelectorAll('#bingoCard tr')).slice(1).map(tr => Array.from(tr.querySelectorAll('td')));
   const isMarked = (td) => td.classList.contains('marked');
   let winningCells = [];
 
@@ -396,9 +291,9 @@ function checkWin() {
     if (allCells.every(isMarked)) winningCells = allCells;
   } else {
     for (let i = 0; i < 5; i++) {
-      if (board[i].every(isMarked)) winningCells = board[i]; // Rows
+      if (board[i].every(isMarked)) winningCells = board[i];
       const col = board.map(row => row[i]);
-      if (col.every(isMarked)) winningCells = col; // Cols
+      if (col.every(isMarked)) winningCells = col;
     }
     const d1 = [board[0][0], board[1][1], board[2][2], board[3][3], board[4][4]];
     const d2 = [board[0][4], board[1][3], board[2][2], board[3][1], board[4][0]];
@@ -421,27 +316,26 @@ async function announceWin() {
   }
 }
 
-/* ================= UI RENDERING ================= */
 function render(state) {
   document.getElementById('bingoCurrent').textContent = state.lastNum || '-';
   const historyBox = document.getElementById('historyBox');
-  historyBox.innerHTML = (state.calledNumbers || []).map(n => 
-    `<span class="bg-slate-100 text-slate-800 px-3 py-1 rounded-lg border border-slate-200 font-bold shadow-sm">${n}</span>`
-  ).join('');
+  calledNumbers = state.calledNumbers || [];
+  historyBox.innerHTML = calledNumbers.map(n => `<span class="bg-slate-100 text-slate-800 px-3 py-1 rounded-lg border border-slate-200 font-bold shadow-sm">${n}</span>`).join('');
   historyBox.scrollTop = historyBox.scrollHeight;
 
   const btn = document.getElementById('btnNewCard');
   if (state.gameStarted) {
     btn.disabled = true;
-    btn.className = "bg-slate-200 text-slate-400 px-6 py-2 rounded-xl font-bold text-sm cursor-not-allowed";
+    btn.className = "bg-slate-200 text-slate-400 px-3 py-2 rounded-xl font-bold text-xs cursor-not-allowed";
     btn.textContent = "LOCKED";
   } else {
     btn.disabled = false;
-    btn.className = "bg-white text-london-blue px-6 py-2 rounded-xl font-black text-sm shadow-xl active:scale-95 transition";
-    btn.textContent = "CHANGE CARD";
+    btn.className = "bg-white text-london-blue px-3 py-2 rounded-xl font-bold text-xs shadow-xl transition";
+    btn.textContent = "NEW CARD";
     clearCardMarksUI();
   }
   document.getElementById('jackpotStatus').classList.toggle('hidden', !state.isJackpotMode);
+  document.getElementById('jackpotBtn').textContent = state.isJackpotMode ? "BLACKOUT ON" : "BLACKOUT OFF";
 }
 
 function clearCardMarksUI() {
@@ -458,7 +352,6 @@ function generateCard() {
   const tbody = document.querySelector('#bingoCard tbody');
   tbody.innerHTML = '';
   if (myName) document.getElementById('cardOwnerName').textContent = `${myName}'s Card`;
-
   const brandColors = ['#002147', '#b91c1c'];
   document.getElementById('cardWrapper').style.backgroundColor = brandColors[Math.floor(Math.random() * 2)];
 
@@ -473,11 +366,7 @@ function generateCard() {
         td.textContent="FREE"; td.classList.add('bg-royal-red', 'marked', 'text-white', 'text-[10px]'); 
       } else { 
         td.textContent = val; td.dataset.label = label; 
-        td.onclick = () => {
-          if (!calledNumbers.includes(label)) return alert("Number not called yet!");
-          td.classList.toggle('marked');
-          checkWin();
-        };
+        td.onclick = () => { if (calledNumbers.includes(label)) { td.classList.toggle('marked'); checkWin(); } else { alert("Not called!"); } };
       }
       tr.appendChild(td);
     }
@@ -489,7 +378,7 @@ async function downloadCard() {
   const element = document.getElementById('cardWrapper');
   const canvas = await html2canvas(element, { scale: 2, useCORS: true });
   const link = document.createElement('a');
-  link.download = `${myName || 'Player'}-BigBen-Bingo.png`;
+  link.download = `${myName}-BigBen.png`;
   link.href = canvas.toDataURL("image/png");
   link.click();
 }
