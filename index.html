@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Bingo Online | Big Ben Manila</title>
+  <title>Bingo Manila</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     :root {
@@ -117,7 +117,7 @@
               </div>
               <div class="flex gap-2">
                 <button onclick="downloadCard()" class="bg-royal-red text-white px-4 py-2 rounded-xl font-black text-sm shadow-xl active:scale-95 transition flex items-center gap-2">
-                  <span>SAVE CARD</span>
+                  <span>DOWNLOAD</span>
                 </button>
                 <button id="btnNewCard" onclick="generateCard()" class="bg-white text-london-blue px-6 py-2 rounded-xl font-black text-sm shadow-xl active:scale-95 transition">CHANGE CARD</button>
               </div>
@@ -368,7 +368,7 @@ function render(state) {
   } else {
     btn.disabled = false;
     btn.className = "bg-white text-london-blue px-6 py-2 rounded-xl font-black text-sm shadow-xl active:scale-95 transition";
-    btn.textContent = "NEW CARD";
+    btn.textContent = "CHANGE CARD";
     clearCardMarksUI(); 
   }
 
