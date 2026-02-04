@@ -97,7 +97,7 @@
         <div class="bg-white p-6 rounded-3xl shadow-md border-b-4 border-slate-200">
           <h3 class="font-bold text-slate-400 text-xs uppercase mb-4 tracking-widest">Lobby Players</h3>
           <ul id="gamePlayerList" class="space-y-2"></ul>
-          <div id="jackpotStatus" class="mt-4 text-center p-2 bg-royal-red text-white rounded-lg text-xs font-bold hidden animate-bounce">JACKPOT MODE ACTIVE</div>
+          <div id="jackpotStatus" class="mt-4 text-center p-2 bg-royal-red text-white rounded-lg text-xs font-bold hidden animate-bounce">BLACKOUT MODE ACTIVE</div>
         </div>
 
         <div id="hostControlsPanel" class="hidden bg-london-blue p-6 rounded-3xl shadow-xl text-white space-y-3">
@@ -258,7 +258,7 @@ function callNumber() {
 function toggleJackpotMode() {
   if (gameStarted && calledNumbers.length > 0) return alert("Game started!");
   isJackpotMode = !isJackpotMode;
-  document.getElementById('jackpotBtn').textContent = isJackpotMode ? "MODE: JACKPOT" : "MODE: STANDARD";
+  document.getElementById('jackpotBtn').textContent = isJackpotMode ? "MODE: BLACKOUT" : "MODE: STANDARD";
   updateStorage();
 }
 
