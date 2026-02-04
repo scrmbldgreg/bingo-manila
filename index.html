@@ -48,6 +48,9 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
 </head>
 <body class="bg-slate-50 min-h-screen flex flex-col items-center p-4 font-sans text-slate-900">
 
@@ -116,7 +119,7 @@
                 <span class="text-[10px] opacity-75 uppercase font-bold tracking-tighter">Big Ben Manila</span>
               </div>
               <div class="flex gap-2">
-                <button onclick="downloadCard()" class="bg-royal-red text-white px-4 py-2 rounded-xl font-black text-sm shadow-xl active:scale-95 transition flex items-center gap-2">
+                <button onclick="downloadCard()" class="bg-green-500 text-white px-4 py-2 rounded-xl font-black text-sm shadow-xl active:scale-95 transition flex items-center gap-2">
                   <span>DOWNLOAD</span>
                 </button>
                 <button id="btnNewCard" onclick="generateCard()" class="bg-white text-london-blue px-6 py-2 rounded-xl font-black text-sm shadow-xl active:scale-95 transition">CHANGE CARD</button>
@@ -180,80 +183,151 @@
   </footer>
 
 <script>
-/* ================= SYSTEM CORE ================= */
+/* ================= FIREBASE CONFIG ================= */
+const firebaseConfig = {
+  apiKey: "AIzaSyBznF9jfkpSnKigpMnM706dXL_ZMOjUOAw",
+  authDomain: "bingo-manila.firebaseapp.com",
+  projectId: "bingo-manila",
+  storageBucket: "bingo-manila.firebasestorage.app",
+  messagingSenderId: "792321653174",
+  appId: "1:792321653174:web:1cf7c925f055b7134f6917",
+  measurementId: "G-4Q004H7XWG"
+};
+
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+/* ================= GLOBAL STATE ================= */
 let currentLobby = null, myName = null, isHost = false;
 let gameNumbersPool = [], calledNumbers = [], isJackpotMode = false, gameStarted = false;
 
+/* ================= NAVIGATION ================= */
 function showScreen(id) {
   ['screenInitial', 'screenCreate', 'screenJoin', 'screenLobbyRoom', 'gameArea'].forEach(s => 
     document.getElementById(s).classList.add('hidden'));
   document.getElementById(id).classList.remove('hidden');
 }
 
-function handleCreateLobby() {
+/* ================= LOBBY LOGIC (FIREBASE) ================= */
+async function handleCreateLobby() {
   const name = document.getElementById('hostName').value.trim();
   if (!name) return alert("Please enter your name");
+  
   const code = Math.random().toString(36).substring(2, 7).toUpperCase();
-  const data = { 
-    code, players: [name], host: name, 
-    gameState: { calledNumbers: [], isJackpotMode: false, gameStarted: false, winners: [] } 
-  };
-  localStorage.setItem('bingo_' + code, JSON.stringify(data));
   currentLobby = code; myName = name; isHost = true;
+
+  await db.ref('lobbies/' + code).set({
+    host: name,
+    players: [name],
+    gameState: { 
+      calledNumbers: [], 
+      isJackpotMode: false, 
+      gameStarted: false, 
+      winners: [], 
+      lastNum: '-' 
+    }
+  });
   setupLobby();
 }
 
-function handleJoinLobby() {
+async function handleJoinLobby() {
   const name = document.getElementById('playerName').value.trim();
   const code = document.getElementById('joinCode').value.trim().toUpperCase();
-  const raw = localStorage.getItem('bingo_' + code);
-  if (!raw) return alert("Lobby code not found");
-  const data = JSON.parse(raw);
-  if (!data.players.includes(name)) data.players.push(name);
-  localStorage.setItem('bingo_' + code, JSON.stringify(data));
+  
+  const snapshot = await db.ref('lobbies/' + code).get();
+  if (!snapshot.exists()) return alert("Lobby not found");
+
+  const data = snapshot.val();
+  if (!data.players.includes(name)) {
+    data.players.push(name);
+    await db.ref('lobbies/' + code + '/players').set(data.players);
+  }
+
   currentLobby = code; myName = name; isHost = false;
   setupLobby();
 }
 
 function setupLobby() {
   document.getElementById('displayCode').textContent = currentLobby;
-  updatePlayerLists();
   showScreen('screenLobbyRoom');
+
+  // Unified Real-time listener
+  db.ref('lobbies/' + currentLobby).on('value', (snapshot) => {
+    const data = snapshot.val();
+    if (!data) return;
+
+    // Kick Check
+    if (!data.players.includes(myName)) {
+      alert("You have been removed from the room.");
+      location.reload();
+      return;
+    }
+
+    // Update Global Variables from Firebase
+    gameStarted = data.gameState.gameStarted;
+    calledNumbers = data.gameState.calledNumbers || [];
+    isJackpotMode = data.gameState.isJackpotMode;
+
+    // UI Sync
+    updatePlayerUI(data.players, data.host, data.gameState.winners || []);
+    render(data.gameState);
+  });
 }
 
-function updatePlayerLists() {
-  const data = JSON.parse(localStorage.getItem('bingo_' + currentLobby));
-  if (!data) return;
-  const html = data.players.map(p => `
-    <li class="p-3 bg-white rounded-xl border-2 border-slate-100 flex justify-between items-center text-sm shadow-sm">
-      <span class="font-bold text-slate-700">${p}</span>
-      ${p===data.host ? '<span class="bg-london-blue text-[8px] text-white px-2 py-1 rounded-full font-black">HOST</span>' : ''}
-    </li>
-  `).join('');
-  document.getElementById('playerList').innerHTML = html;
+function updatePlayerUI(players, hostName, winnerList) {
+  // Update Lobby Screen List
+  const lobbyList = document.getElementById('playerList');
+  if (lobbyList) {
+    lobbyList.innerHTML = players.map(p => `
+      <li class="p-3 bg-white rounded-xl border-2 border-slate-100 flex justify-between items-center text-sm shadow-sm">
+        <span class="font-bold text-slate-700">${p}</span>
+        ${p === hostName ? '<span class="bg-london-blue text-[8px] text-white px-2 py-1 rounded-full font-black">HOST</span>' : ''}
+      </li>`).join('');
+  }
+
+  // Update Game Screen Sidebar
+  const gameList = document.getElementById('gamePlayerList');
+  gameList.innerHTML = players.map(p => {
+    const isWinner = winnerList.includes(p);
+    const kickBtn = (isHost && p !== myName) ? 
+      `<button onclick="kickPlayer('${p}')" class="ml-2 text-royal-red hover:text-red-700 font-bold text-[10px] uppercase border border-red-200 px-2 py-1 rounded-md hover:bg-red-50 transition">Kick</button>` : '';
+    
+    return `
+      <li class="flex items-center justify-between p-3 rounded-xl border-2 transition-all ${isWinner ? 'bg-yellow-50 border-yellow-400 shadow-lg' : 'bg-slate-50 border-slate-100'}">
+        <div class="flex items-center gap-2">
+          <div class="w-2 h-2 rounded-full ${isWinner ? 'bg-yellow-500 animate-pulse' : 'bg-green-500'}"></div>
+          <span class="text-sm font-bold ${isWinner ? 'text-yellow-900' : 'text-slate-700'}">${p}</span>
+        </div>
+        <div class="flex items-center gap-2">
+          ${isWinner ? '<span class="text-[9px] bg-yellow-500 text-white px-2 py-0.5 rounded-full font-black uppercase">WINNER</span>' : ''}
+          ${kickBtn}
+        </div>
+      </li>`;
+  }).join('');
 }
 
+/* ================= GAME ACTIONS ================= */
 function enterGamePanel() {
   showScreen('gameArea');
-  if (currentLobby) {
-    document.getElementById('gameRoomCode').textContent = currentLobby;
-  }
+  document.getElementById('gameRoomCode').textContent = currentLobby;
   if (isHost) {
     document.getElementById('hostControlsPanel').classList.remove('hidden');
     gameNumbersPool = Array.from({length: 75}, (_, i) => i + 1);
   }
   generateCard();
-  sync();
 }
 
 function triggerStartGame() {
   if (!confirm("Start Game? This locks all player cards.")) return;
-  gameStarted = true;
-  calledNumbers = []; 
-  gameNumbersPool = Array.from({length: 75}, (_, i) => i + 1);
+  db.ref('lobbies/' + currentLobby + '/gameState').update({
+    gameStarted: true,
+    calledNumbers: [],
+    winners: [],
+    lastNum: '-'
+  });
   document.getElementById('btnStartGame').classList.add('hidden');
   document.getElementById('activeHostButtons').classList.remove('hidden');
-  updateStorage(); 
 }
 
 function callNumber() {
@@ -262,66 +336,57 @@ function callNumber() {
   const num = gameNumbersPool.splice(idx, 1)[0];
   const label = (num<=15?'B':num<=30?'I':num<=45?'N':num<=60?'G':'O') + "-" + num;
   calledNumbers.push(label);
-  updateStorage();
+  
+  db.ref('lobbies/' + currentLobby + '/gameState').update({
+    calledNumbers: calledNumbers,
+    lastNum: label
+  });
 }
 
 function toggleJackpotMode() {
-  if (gameStarted && calledNumbers.length > 0) return alert("Game started!");
+  if (gameStarted && calledNumbers.length > 0) return alert("Game in progress!");
   isJackpotMode = !isJackpotMode;
+  db.ref('lobbies/' + currentLobby + '/gameState').update({ isJackpotMode: isJackpotMode });
   document.getElementById('jackpotBtn').textContent = isJackpotMode ? "MODE: BLACKOUT" : "MODE: STANDARD";
-  updateStorage();
 }
 
-function updateStorage() {
-  const data = JSON.parse(localStorage.getItem('bingo_' + currentLobby));
-  const existingWinners = data.gameState ? (data.gameState.winners || []) : [];
-  data.gameState = { 
-    calledNumbers, isJackpotMode, gameStarted, winners: existingWinners,
-    lastNum: calledNumbers[calledNumbers.length-1] || '-'
-  };
-  localStorage.setItem('bingo_' + currentLobby, JSON.stringify(data));
-  render(data.gameState);
+async function kickPlayer(playerToKick) {
+  if (!isHost) return;
+  const snapshot = await db.ref('lobbies/' + currentLobby + '/players').get();
+  let players = snapshot.val() || [];
+  players = players.filter(p => p !== playerToKick);
+  await db.ref('lobbies/' + currentLobby + '/players').set(players);
 }
-
-function sync() {
-  const data = JSON.parse(localStorage.getItem('bingo_' + currentLobby));
-  if (data && data.gameState) render(data.gameState);
-}
-
-window.addEventListener('storage', (e) => {
-  if (e.key === 'bingo_' + currentLobby) {
-    const data = JSON.parse(e.newValue);
-    if (data.gameState) render(data.gameState);
-  }
-});
 
 function resetBingo() {
-  if (!isHost) return;
-  if (!confirm("Reset game?")) return;
-  gameStarted = false; calledNumbers = []; isJackpotMode = false;
+  if (!isHost || !confirm("Reset game?")) return;
   gameNumbersPool = Array.from({length: 75}, (_, i) => i + 1);
+  db.ref('lobbies/' + currentLobby + '/gameState').set({
+    calledNumbers: [],
+    isJackpotMode: false,
+    gameStarted: false,
+    winners: [],
+    lastNum: '-'
+  });
   document.getElementById('btnStartGame').classList.remove('hidden');
   document.getElementById('activeHostButtons').classList.add('hidden');
-  const data = JSON.parse(localStorage.getItem('bingo_' + currentLobby));
-  data.gameState = { calledNumbers: [], isJackpotMode: false, gameStarted: false, winners: [], lastNum: '-' };
-  localStorage.setItem('bingo_' + currentLobby, JSON.stringify(data));
-  render(data.gameState);
 }
 
+/* ================= WIN LOGIC ================= */
 function checkWin() {
-  const tbody = document.querySelector('#bingoCard tbody');
-  const rows = Array.from(tbody.querySelectorAll('tr'));
-  const board = rows.map(tr => Array.from(tr.querySelectorAll('td')));
+  const board = Array.from(document.querySelectorAll('#bingoCard tr')).slice(1)
+               .map(tr => Array.from(tr.querySelectorAll('td')));
   const isMarked = (td) => td.classList.contains('marked');
   let winningCells = [];
 
   if (isJackpotMode) {
-    if (board.flat().every(isMarked)) winningCells = board.flat();
+    const allCells = board.flat();
+    if (allCells.every(isMarked)) winningCells = allCells;
   } else {
-    for (let r = 0; r < 5; r++) { if (board[r].every(isMarked)) winningCells = board[r]; }
-    for (let c = 0; c < 5; c++) {
-      const col = [board[0][c], board[1][c], board[2][c], board[3][c], board[4][c]];
-      if (col.every(isMarked)) winningCells = col;
+    for (let i = 0; i < 5; i++) {
+      if (board[i].every(isMarked)) winningCells = board[i]; // Rows
+      const col = board.map(row => row[i]);
+      if (col.every(isMarked)) winningCells = col; // Cols
     }
     const d1 = [board[0][0], board[1][1], board[2][2], board[3][3], board[4][4]];
     const d2 = [board[0][4], board[1][3], board[2][2], board[3][1], board[4][0]];
@@ -335,33 +400,26 @@ function checkWin() {
   }
 }
 
-function announceWin() {
-  const raw = localStorage.getItem('bingo_' + currentLobby);
-  const data = JSON.parse(raw);
-  if (!data.gameState.winners) data.gameState.winners = [];
-  if (!data.gameState.winners.includes(myName)) {
-    data.gameState.winners.push(myName); 
-    localStorage.setItem('bingo_' + currentLobby, JSON.stringify(data));
-    render(data.gameState);
+async function announceWin() {
+  const snapshot = await db.ref('lobbies/' + currentLobby + '/gameState/winners').get();
+  let winners = snapshot.val() || [];
+  if (!winners.includes(myName)) {
+    winners.push(myName);
+    await db.ref('lobbies/' + currentLobby + '/gameState/winners').set(winners);
   }
 }
 
+/* ================= UI RENDERING ================= */
 function render(state) {
-  calledNumbers = state.calledNumbers || [];
-  gameStarted = state.gameStarted || false;
-  isJackpotMode = state.isJackpotMode || false;
-  const winners = state.winners || [];
-
   document.getElementById('bingoCurrent').textContent = state.lastNum || '-';
-
   const historyBox = document.getElementById('historyBox');
-  historyBox.innerHTML = calledNumbers.map(n => 
+  historyBox.innerHTML = (state.calledNumbers || []).map(n => 
     `<span class="bg-slate-100 text-slate-800 px-3 py-1 rounded-lg border border-slate-200 font-bold shadow-sm">${n}</span>`
   ).join('');
   historyBox.scrollTop = historyBox.scrollHeight;
 
   const btn = document.getElementById('btnNewCard');
-  if (gameStarted) {
+  if (state.gameStarted) {
     btn.disabled = true;
     btn.className = "bg-slate-200 text-slate-400 px-6 py-2 rounded-xl font-bold text-sm cursor-not-allowed";
     btn.textContent = "LOCKED";
@@ -369,42 +427,16 @@ function render(state) {
     btn.disabled = false;
     btn.className = "bg-white text-london-blue px-6 py-2 rounded-xl font-black text-sm shadow-xl active:scale-95 transition";
     btn.textContent = "CHANGE CARD";
-    clearCardMarksUI(); 
+    clearCardMarksUI();
   }
-
-  document.getElementById('jackpotStatus').classList.toggle('hidden', !isJackpotMode);
-  updateGamePlayerListUI(winners);
-}
-
-function updateGamePlayerListUI(winnerList) {
-  const raw = localStorage.getItem('bingo_' + currentLobby);
-  const data = JSON.parse(raw);
-  const list = document.getElementById('gamePlayerList');
-  list.innerHTML = '';
-
-  data.players.forEach(p => {
-    const isWinner = winnerList.includes(p);
-    const li = document.createElement('li');
-    li.className = `flex items-center justify-between p-3 rounded-xl border-2 transition-all ${isWinner ? 'bg-yellow-50 border-yellow-400 shadow-lg' : 'bg-slate-50 border-slate-100'}`;
-    li.innerHTML = `
-      <div class="flex items-center gap-2">
-        <div class="w-2 h-2 rounded-full ${isWinner ? 'bg-yellow-500 animate-pulse' : 'bg-green-500'}"></div>
-        <span class="text-sm font-bold ${isWinner ? 'text-yellow-900' : 'text-slate-700'}">${p}</span>
-      </div>
-      ${isWinner ? '<span class="text-[9px] bg-yellow-500 text-white px-2 py-0.5 rounded-full font-black uppercase tracking-tighter">WINNER</span>' : ''}
-    `;
-    list.appendChild(li);
-  });
+  document.getElementById('jackpotStatus').classList.toggle('hidden', !state.isJackpotMode);
 }
 
 function clearCardMarksUI() {
-  const cells = document.querySelectorAll('#bingoCard tbody td');
-  cells.forEach(td => {
-    td.classList.remove('winning-cell');
-    if (td.textContent !== "FREE") {
-      td.classList.remove('marked');
-      td.classList.add('bg-white');
-    }
+  document.querySelectorAll('#bingoCard td').forEach(td => {
+    td.classList.remove('winning-cell', 'marked', 'bg-green-500', 'text-white');
+    if (td.textContent === "FREE") td.classList.add('marked', 'bg-royal-red', 'text-white');
+    else td.classList.add('bg-white');
   });
 }
 
@@ -413,13 +445,10 @@ function generateCard() {
   const cols = ranges.map(r => Array.from({length: r[1]-r[0]+1}, (_,i)=>i+r[0]).sort(()=>Math.random()-0.5).slice(0,5));
   const tbody = document.querySelector('#bingoCard tbody');
   tbody.innerHTML = '';
-  
-  const cardTitle = document.getElementById('cardOwnerName');
-  if (myName) cardTitle.textContent = `${myName}`;
+  if (myName) document.getElementById('cardOwnerName').textContent = `${myName}'s Card`;
 
   const brandColors = ['#002147', '#b91c1c'];
-  const selectedCardColor = brandColors[Math.floor(Math.random() * brandColors.length)];
-  document.getElementById('cardWrapper').style.backgroundColor = selectedCardColor;
+  document.getElementById('cardWrapper').style.backgroundColor = brandColors[Math.floor(Math.random() * 2)];
 
   for (let r=0; r<5; r++) {
     const tr = document.createElement('tr');
@@ -428,10 +457,8 @@ function generateCard() {
       td.className = "w-14 h-14 md:w-20 md:h-20 bg-white border-2 border-slate-200 text-xl font-black cursor-pointer text-center text-london-blue shadow-inner active:bg-slate-100 transition-colors";
       const val = cols[c][r];
       const label = (val<=15?'B':val<=30?'I':val<=45?'N':val<=60?'G':'O') + "-" + val;
-      
       if (r===2 && c===2) { 
-        td.textContent="FREE"; 
-        td.classList.add('bg-royal-red', 'marked', 'text-white', 'text-[10px]'); 
+        td.textContent="FREE"; td.classList.add('bg-royal-red', 'marked', 'text-white', 'text-[10px]'); 
       } else { 
         td.textContent = val; td.dataset.label = label; 
         td.onclick = () => {
@@ -445,19 +472,13 @@ function generateCard() {
     tbody.appendChild(tr);
   }
 }
+
 async function downloadCard() {
   const element = document.getElementById('cardWrapper');
-  const canvas = await html2canvas(element, {
-    backgroundColor: null,
-    scale: 2, // Higher quality
-    logging: false,
-    useCORS: true
-  });
-  
-  const dataUrl = canvas.toDataURL("image/png");
+  const canvas = await html2canvas(element, { scale: 2, useCORS: true });
   const link = document.createElement('a');
   link.download = `${myName || 'Player'}-BigBen-Bingo.png`;
-  link.href = dataUrl;
+  link.href = canvas.toDataURL("image/png");
   link.click();
 }
 </script>
