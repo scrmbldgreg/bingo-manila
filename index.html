@@ -1,1 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bingo Online | Big Ben Manila</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --london-blue: #002147;
+      --royal-red: #e4002b;
+    }
+    .bg-london-blue { background-color: var(--london-blue); }
+    .text-london-blue { color: var(--london-blue); }
+    .bg-royal-red { background-color: var(--royal-red); }
+    
+    /* Bingo Chip Style */
+    .marked { position: relative; background-color: #10b981 !important; color: white !important; }
+    .marked::after {
+      content: '✖';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: rgba(255,255,255,0.4);
+      font-size: 1.5rem;
+    }
 
+    /* Winning Strike-through */
+    .winning-cell { position: relative; background-color: #fef08a !important; color: #854d0e !important; }
+    .winning-cell::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 0;
+      width: 100%;
+      height: 4px;
+      background-color: var(--royal-red);
+      transform: translateY(-50%);
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    #historyBox::-webkit-scrollbar { width: 6px; }
+    #historyBox::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+  </style>
+</head>
+<body class="bg-slate-50 min-h-screen flex flex-col items-center p-4 font-sans text-slate-900">
+
+  <div class="flex flex-col items-center mb-8">
+    <div class="w-32 h-32 bg-london-blue rounded-full border-4 border-white shadow-lg flex items-center justify-center overflow-hidden mb-2">
+      <img src="https://i.ibb.co/LhY07N7/big-ben-manila.png" alt="Big Ben Manila Logo" class="w-full h-full object-contain p-2">
+    </div>
+    <h1 class="text-2xl font-black tracking-tighter text-london-blue uppercase">Big Ben Manila Bingo</h1>
+  </div>
+
+  <div id="screenInitial" class="bg-white p-8 rounded-3xl shadow-xl w-full max-w-md flex flex-col gap-4 text-center border-t-8 border-london-blue">
+    <button onclick="showScreen('screenCreate')" class="bg-london-blue hover:opacity-90 text-white font-bold py-4 rounded-2xl transition">CREATE LOBBY</button>
+    <button onclick="showScreen('screenJoin')" class="bg-royal-red hover:opacity-90 text-white font-bold py-4 rounded-2xl transition shadow-lg shadow-red-200">JOIN LOBBY</button>
+  </div>
+
+  <div id="screenCreate" class="hidden bg-white p-8 rounded-3xl shadow-xl w-full max-w-md border-t-8 border-london-blue">
+    <h2 class="text-xl font-bold mb-4">Host a Game</h2>
+    <input id="hostName" type="text" placeholder="Your Name" class="border-2 rounded-xl p-3 w-full mb-4 outline-none focus:border-london-blue">
+    <button onclick="handleCreateLobby()" class="bg-london-blue text-white font-bold py-3 rounded-xl w-full">Generate Lobby</button>
+    <button onclick="showScreen('screenInitial')" class="text-slate-400 mt-4 w-full text-sm hover:underline">← Cancel</button>
+  </div>
+
+  <div id="screenJoin" class="hidden bg-white p-8 rounded-3xl shadow-xl w-full max-w-md border-t-8 border-royal-red">
+    <h2 class="text-xl font-bold mb-4">Join Room</h2>
+    <input id="playerName" type="text" placeholder="Your Name" class="border-2 rounded-xl p-3 w-full mb-3 outline-none focus:border-royal-red">
+    <input id="joinCode" type="text" placeholder="Room Code" class="border-2 rounded-xl p-3 w-full mb-4 outline-none uppercase tracking-widest text-center font-bold">
+    <button onclick="handleJoinLobby()" class="bg-royal-red text-white font-bold py-3 rounded-xl w-full">Enter Room</button>
+    <button onclick="showScreen('screenInitial')" class="text-slate-400 mt-4 w-full text-sm hover:underline">← Cancel</button>
+  </div>
+
+  <div id="screenLobbyRoom" class="hidden bg-white p-8 rounded-3xl shadow-xl w-full max-w-lg border-x-8 border-london-blue">
+    <div class="text-center mb-6">
+      <span class="text-slate-400 uppercase text-xs font-bold tracking-widest">Share this Code</span>
+      <div id="displayCode" class="text-6xl font-black text-london-blue mt-1">XXXXX</div>
+    </div>
+    <div class="bg-slate-50 rounded-2xl p-4 mb-6">
+      <h3 class="font-bold text-slate-700 mb-3 flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+        Waiting for Players...
+      </h3>
+      <ul id="playerList" class="space-y-2"></ul>
+    </div>
+    <button onclick="enterGamePanel()" class="bg-london-blue text-white font-bold py-4 rounded-2xl w-full shadow-xl hover:scale-[1.02] transition transform">ENTER GAME PANEL</button>
+  </div>
+
+  <div id="gameArea" class="hidden w-full max-w-6xl flex flex-col gap-6">
+    <div class="grid lg:grid-cols-4 gap-6">
+      
+      <div class="lg:col-span-1 space-y-6">
+        <div class="bg-white p-6 rounded-3xl shadow-md border-b-4 border-slate-200">
+          <h3 class="font-bold text-slate-400 text-xs uppercase mb-4 tracking-widest">Lobby Players</h3>
+          <ul id="gamePlayerList" class="space-y-2"></ul>
+          <div id="jackpotStatus" class="mt-4 text-center p-2 bg-royal-red text-white rounded-lg text-xs font-bold hidden animate-bounce">JACKPOT MODE ACTIVE</div>
+        </div>
+
+        <div id="hostControlsPanel" class="hidden bg-london-blue p-6 rounded-3xl shadow-xl text-white space-y-3">
+          <p class="text-[10px] font-bold opacity-60 uppercase">Host Control Panel</p>
+          <button id="btnStartGame" onclick="triggerStartGame()" class="w-full bg-royal-red text-white font-bold py-3 rounded-xl shadow-lg hover:brightness-110 transition">START GAME</button>
+          <div id="activeHostButtons" class="hidden space-y-3">
+            <button onclick="callNumber()" class="w-full bg-green-500 text-white font-bold py-3 rounded-xl shadow-inner active:scale-95 transition">CALL NUMBER</button>
+            <button onclick="toggleJackpotMode()" id="jackpotBtn" class="w-full border-2 border-white/30 hover:bg-white/10 py-2 rounded-xl text-sm font-bold transition">SET JACKPOT MODE</button>
+          </div>
+          <button onclick="resetBingo()" class="w-full text-white/50 text-[10px] font-bold pt-2 hover:text-white transition uppercase">Reset Game State</button>
+        </div>
+      </div>
+
+      <div class="lg:col-span-3 space-y-6">
+        <div class="grid md:grid-cols-3 gap-6">
+          
+          <div class="bg-white p-6 rounded-3xl shadow-lg flex flex-col border-t-8 border-london-blue">
+            <div class="text-center mb-4">
+              <h3 class="font-bold text-slate-400 text-[10px] mb-1 uppercase tracking-widest">Now Calling</h3>
+              <div id="bingoCurrent" class="text-6xl font-black text-london-blue leading-tight">-</div>
+            </div>
+            
+            <div class="flex-1 flex flex-col border-t border-slate-100 pt-4">
+              <h3 class="font-bold text-slate-400 text-[10px] mb-3 uppercase tracking-widest">Full History</h3>
+              <div id="historyBox" class="text-[18px] text-slate-500 h-80 overflow-y-auto pr-2 font-mono flex flex-wrap gap-2 content-start scroll-smooth"></div>
+            </div>
+          </div>
+
+          <div id="cardWrapper" class="md:col-span-2 p-6 rounded-3xl shadow-2xl transition-all border-london-blue border-8">
+            <div class="flex justify-between items-center mb-6 text-white">
+              <div class="flex flex-col">
+                <h2 id="cardOwnerName" class="text-2xl font-black uppercase italic tracking-tighter">Your Card</h2>
+                <span class="text-[10px] opacity-75 uppercase font-bold tracking-tighter">Big Ben Manila Official Issue</span>
+              </div>
+              <button id="btnNewCard" onclick="generateCard()" class="bg-white text-london-blue px-6 py-2 rounded-xl font-black text-sm shadow-xl active:scale-95 transition">NEW CARD</button>
+            </div>
+            
+            <div class="flex justify-center overflow-x-auto">
+              <table id="bingoCard" class="border-separate border-spacing-2">
+                <thead class="text-white font-black text-3xl">
+                  <tr>
+                    <th class="w-16 h-12">B</th>
+                    <th class="w-16 h-12">I</th>
+                    <th class="w-16 h-12">N</th>
+                    <th class="w-16 h-12">G</th>
+                    <th class="w-16 h-12">O</th>
+                  </tr>
+                </thead>
+                <tbody class="bg-white rounded-2xl overflow-hidden"></tbody>
+              </table>
+            </div>
+          </div> </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* ================= SYSTEM CORE ================= */
+let currentLobby = null, myName = null, isHost = false;
+let gameNumbersPool = [], calledNumbers = [], isJackpotMode = false, gameStarted = false;
+
+function showScreen(id) {
+  ['screenInitial', 'screenCreate', 'screenJoin', 'screenLobbyRoom', 'gameArea'].forEach(s => 
+    document.getElementById(s).classList.add('hidden'));
+  document.getElementById(id).classList.remove('hidden');
+}
+
+function handleCreateLobby() {
+  const name = document.getElementById('hostName').value.trim();
+  if (!name) return alert("Please enter your name");
+  const code = Math.random().toString(36).substring(2, 7).toUpperCase();
+  const data = { 
+    code, players: [name], host: name, 
+    gameState: { calledNumbers: [], isJackpotMode: false, gameStarted: false, winners: [] } 
+  };
+  localStorage.setItem('bingo_' + code, JSON.stringify(data));
+  currentLobby = code; myName = name; isHost = true;
+  setupLobby();
+}
+
+function handleJoinLobby() {
+  const name = document.getElementById('playerName').value.trim();
+  const code = document.getElementById('joinCode').value.trim().toUpperCase();
+  const raw = localStorage.getItem('bingo_' + code);
+  if (!raw) return alert("Lobby code not found");
+  const data = JSON.parse(raw);
+  if (!data.players.includes(name)) data.players.push(name);
+  localStorage.setItem('bingo_' + code, JSON.stringify(data));
+  currentLobby = code; myName = name; isHost = false;
+  setupLobby();
+}
+
+function setupLobby() {
+  document.getElementById('displayCode').textContent = currentLobby;
+  updatePlayerLists();
+  showScreen('screenLobbyRoom');
+}
+
+function updatePlayerLists() {
+  const data = JSON.parse(localStorage.getItem('bingo_' + currentLobby));
+  if (!data) return;
+  const html = data.players.map(p => `
+    <li class="p-3 bg-white rounded-xl border-2 border-slate-100 flex justify-between items-center text-sm shadow-sm">
+      <span class="font-bold text-slate-700">${p}</span>
+      ${p===data.host ? '<span class="bg-london-blue text-[8px] text-white px-2 py-1 rounded-full font-black">HOST</span>' : ''}
+    </li>
+  `).join('');
+  document.getElementById('playerList').innerHTML = html;
+}
+
+function enterGamePanel() {
+  showScreen('gameArea');
+  if (isHost) {
+    document.getElementById('hostControlsPanel').classList.remove('hidden');
+    gameNumbersPool = Array.from({length: 75}, (_, i) => i + 1);
+  }
+  generateCard();
+  sync();
+}
+
+function triggerStartGame() {
+  if (!confirm("Start Game? This locks all player cards.")) return;
+  gameStarted = true;
+  calledNumbers = []; 
+  gameNumbersPool = Array.from({length: 75}, (_, i) => i + 1);
+  document.getElementById('btnStartGame').classList.add('hidden');
+  document.getElementById('activeHostButtons').classList.remove('hidden');
+  updateStorage(); 
+}
+
+function callNumber() {
+  if (gameNumbersPool.length === 0) return alert("All numbers called!");
+  const idx = Math.floor(Math.random() * gameNumbersPool.length);
+  const num = gameNumbersPool.splice(idx, 1)[0];
+  const label = (num<=15?'B':num<=30?'I':num<=45?'N':num<=60?'G':'O') + "-" + num;
+  calledNumbers.push(label);
+  updateStorage();
+}
+
+function toggleJackpotMode() {
+  if (gameStarted && calledNumbers.length > 0) return alert("Game started!");
+  isJackpotMode = !isJackpotMode;
+  document.getElementById('jackpotBtn').textContent = isJackpotMode ? "MODE: JACKPOT" : "MODE: STANDARD";
+  updateStorage();
+}
+
+function updateStorage() {
+  const data = JSON.parse(localStorage.getItem('bingo_' + currentLobby));
+  const existingWinners = data.gameState ? (data.gameState.winners || []) : [];
+  data.gameState = { 
+    calledNumbers, isJackpotMode, gameStarted, winners: existingWinners,
+    lastNum: calledNumbers[calledNumbers.length-1] 
+  };
+  localStorage.setItem('bingo_' + currentLobby, JSON.stringify(data));
+  render(data.gameState);
+}
+
+function sync() {
+  const data = JSON.parse(localStorage.getItem('bingo_' + currentLobby));
+  if (data && data.gameState) render(data.gameState);
+}
+
+window.addEventListener('storage', (e) => {
+  if (e.key === 'bingo_' + currentLobby) {
+    const data = JSON.parse(e.newValue);
+    if (data.gameState) render(data.gameState);
+  }
+});
+
+function resetBingo() {
+  if (!isHost) return;
+  if (!confirm("Reset game?")) return;
+  gameStarted = false; calledNumbers = []; isJackpotMode = false;
+  gameNumbersPool = Array.from({length: 75}, (_, i) => i + 1);
+  document.getElementById('btnStartGame').classList.remove('hidden');
+  document.getElementById('activeHostButtons').classList.add('hidden');
+  const data = JSON.parse(localStorage.getItem('bingo_' + currentLobby));
+  data.gameState = { calledNumbers: [], isJackpotMode: false, gameStarted: false, winners: [], lastNum: '-' };
+  localStorage.setItem('bingo_' + currentLobby, JSON.stringify(data));
+  render(data.gameState);
+}
+
+function checkWin() {
+  const tbody = document.querySelector('#bingoCard tbody');
+  const rows = Array.from(tbody.querySelectorAll('tr'));
+  const board = rows.map(tr => Array.from(tr.querySelectorAll('td')));
+  const isMarked = (td) => td.classList.contains('marked');
+  let winningCells = [];
+
+  if (isJackpotMode) {
+    if (board.flat().every(isMarked)) winningCells = board.flat();
+  } else {
+    for (let r = 0; r < 5; r++) { if (board[r].every(isMarked)) winningCells = board[r]; }
+    for (let c = 0; c < 5; c++) {
+      const col = [board[0][c], board[1][c], board[2][c], board[3][c], board[4][c]];
+      if (col.every(isMarked)) winningCells = col;
+    }
+    const d1 = [board[0][0], board[1][1], board[2][2], board[3][3], board[4][4]];
+    const d2 = [board[0][4], board[1][3], board[2][2], board[3][1], board[4][0]];
+    if (d1.every(isMarked)) winningCells = d1;
+    if (d2.every(isMarked)) winningCells = d2;
+  }
+
+  if (winningCells.length > 0) {
+    winningCells.forEach(td => td.classList.add('winning-cell'));
+    announceWin();
+  }
+}
+
+function announceWin() {
+  const raw = localStorage.getItem('bingo_' + currentLobby);
+  const data = JSON.parse(raw);
+  if (!data.gameState.winners) data.gameState.winners = [];
+  if (!data.gameState.winners.includes(myName)) {
+    data.gameState.winners.push(myName); 
+    localStorage.setItem('bingo_' + currentLobby, JSON.stringify(data));
+    render(data.gameState);
+  }
+}
+
+function render(state) {
+  calledNumbers = state.calledNumbers || [];
+  gameStarted = state.gameStarted || false;
+  isJackpotMode = state.isJackpotMode || false;
+  const winners = state.winners || [];
+
+  document.getElementById('bingoCurrent').textContent = state.lastNum || '-';
+
+  const historyBox = document.getElementById('historyBox');
+  historyBox.innerHTML = calledNumbers.map(n => 
+    `<span class="bg-slate-100 text-slate-800 px-3 py-1 rounded-lg border border-slate-200 font-bold shadow-sm">${n}</span>`
+  ).join('');
+  historyBox.scrollTop = historyBox.scrollHeight;
+
+  const btn = document.getElementById('btnNewCard');
+  if (gameStarted) {
+    btn.disabled = true;
+    btn.className = "bg-slate-200 text-slate-400 px-6 py-2 rounded-xl font-bold text-sm cursor-not-allowed";
+    btn.textContent = "LOCKED";
+  } else {
+    btn.disabled = false;
+    btn.className = "bg-white text-london-blue px-6 py-2 rounded-xl font-black text-sm shadow-xl active:scale-95 transition";
+    btn.textContent = "NEW CARD";
+    clearCardMarksUI(); 
+  }
+
+  document.getElementById('jackpotStatus').classList.toggle('hidden', !isJackpotMode);
+  updateGamePlayerListUI(winners);
+}
+
+function updateGamePlayerListUI(winnerList) {
+  const raw = localStorage.getItem('bingo_' + currentLobby);
+  const data = JSON.parse(raw);
+  const list = document.getElementById('gamePlayerList');
+  list.innerHTML = '';
+
+  data.players.forEach(p => {
+    const isWinner = winnerList.includes(p);
+    const li = document.createElement('li');
+    li.className = `flex items-center justify-between p-3 rounded-xl border-2 transition-all ${isWinner ? 'bg-yellow-50 border-yellow-400 shadow-lg' : 'bg-slate-50 border-slate-100'}`;
+    li.innerHTML = `
+      <div class="flex items-center gap-2">
+        <div class="w-2 h-2 rounded-full ${isWinner ? 'bg-yellow-500 animate-pulse' : 'bg-green-500'}"></div>
+        <span class="text-sm font-bold ${isWinner ? 'text-yellow-900' : 'text-slate-700'}">${p}</span>
+      </div>
+      ${isWinner ? '<span class="text-[9px] bg-yellow-500 text-white px-2 py-0.5 rounded-full font-black uppercase tracking-tighter">WINNER</span>' : ''}
+    `;
+    list.appendChild(li);
+  });
+}
+
+function clearCardMarksUI() {
+  const cells = document.querySelectorAll('#bingoCard tbody td');
+  cells.forEach(td => {
+    td.classList.remove('winning-cell');
+    if (td.textContent !== "FREE") {
+      td.classList.remove('marked');
+      td.classList.add('bg-white');
+    }
+  });
+}
+
+function generateCard() {
+  const ranges = [[1,15],[16,30],[31,45],[46,60],[61,75]];
+  const cols = ranges.map(r => Array.from({length: r[1]-r[0]+1}, (_,i)=>i+r[0]).sort(()=>Math.random()-0.5).slice(0,5));
+  const tbody = document.querySelector('#bingoCard tbody');
+  tbody.innerHTML = '';
+  
+  const cardTitle = document.getElementById('cardOwnerName');
+  if (myName) cardTitle.textContent = `${myName}'s Card`;
+
+  const brandColors = ['#002147', '#e4002b'];
+  const selectedCardColor = brandColors[Math.floor(Math.random() * brandColors.length)];
+  document.getElementById('cardWrapper').style.backgroundColor = selectedCardColor;
+
+  for (let r=0; r<5; r++) {
+    const tr = document.createElement('tr');
+    for (let c=0; c<5; c++) {
+      const td = document.createElement('td');
+      td.className = "w-14 h-14 md:w-20 md:h-20 bg-white border-2 border-slate-200 text-xl font-black cursor-pointer text-center text-london-blue shadow-inner active:bg-slate-100 transition-colors";
+      const val = cols[c][r];
+      const label = (val<=15?'B':val<=30?'I':val<=45?'N':val<=60?'G':'O') + "-" + val;
+      
+      if (r===2 && c===2) { 
+        td.textContent="FREE"; 
+        td.classList.add('bg-royal-red', 'marked', 'text-white', 'text-[10px]'); 
+      } else { 
+        td.textContent = val; td.dataset.label = label; 
+        td.onclick = () => {
+          if (!calledNumbers.includes(label)) return alert("Not called yet!");
+          td.classList.toggle('marked');
+          checkWin();
+        };
+      }
+      tr.appendChild(td);
+    }
+    tbody.appendChild(tr);
+  }
+}
+</script>
+</body>
+</html>
