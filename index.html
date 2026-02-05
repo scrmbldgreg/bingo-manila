@@ -1,3 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bingo Manila</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <style>
+    :root { --london-blue: #002147; --royal-red: #991b1b; }
+    .bg-london-blue { background-color: var(--london-blue); }
+    .text-london-blue { color: var(--london-blue); }
+    .bg-royal-red { background-color: var(--royal-red); }
+    .marked { position: relative; background-color: #10b981 !important; color: white !important; }
+    .marked::after { content: '✖'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: rgba(255,255,255,0.4); font-size: 1.5rem; }
+    .winning-cell { position: relative; background-color: #fef08a !important; color: #854d0e !important; }
+    .winning-cell::after { content: ''; position: absolute; top: 50%; left: 0; width: 100%; height: 4px; background-color: var(--royal-red); transform: translateY(-50%); z-index: 10; pointer-events: none; }
+    #historyBox::-webkit-scrollbar { width: 6px; }
+    #historyBox::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+  </style>
+</head>
+<body class="bg-slate-50 min-h-screen flex flex-col items-center p-4 font-sans text-slate-900">
+
+  <div class="flex flex-col items-center mb-8">
+    <div class="w-32 h-32 rounded-full border-4 border-white shadow-lg flex items-center justify-center overflow-hidden mb-2">
+      <img src="https://scrmbldgreg.github.io/bingo-manila/assets/bigbenmnl.png" alt="Big Ben Manila Logo" class="w-full h-full object-contain p-2">
+    </div>
+    <h1 class="text-2xl font-black tracking-tighter text-london-blue uppercase">Big Ben Manila Bingo</h1>
+  </div>
+
+  <div id="screenInitial" class="bg-white p-8 rounded-3xl shadow-xl w-full max-w-md flex flex-col gap-4 text-center border-t-8 border-london-blue">
+    <button onclick="showScreen('screenCreate')" class="bg-london-blue hover:opacity-90 text-white font-bold py-4 rounded-2xl transition">CREATE LOBBY</button>
+    <button onclick="showScreen('screenJoin')" class="bg-royal-red hover:opacity-90 text-white font-bold py-4 rounded-2xl transition shadow-lg shadow-red-200">JOIN LOBBY</button>
+  </div>
+
+  <div id="screenCreate" class="hidden bg-white p-8 rounded-3xl shadow-xl w-full max-w-md border-t-8 border-london-blue">
+    <h2 class="text-xl font-bold mb-4 text-london-blue">Host a Game</h2>
+    <input id="hostName" type="text" placeholder="Your Name" class="border-2 rounded-xl p-3 w-full mb-4 outline-none focus:border-london-blue">
+    <button onclick="handleCreateLobby()" class="bg-london-blue text-white font-bold py-3 rounded-xl w-full uppercase">Generate Lobby</button>
+    <button onclick="showScreen('screenInitial')" class="text-slate-400 mt-4 w-full text-sm hover:underline text-center">← Cancel</button>
+  </div>
+
+  <div id="screenJoin" class="hidden bg-white p-8 rounded-3xl shadow-xl w-full max-w-md border-t-8 border-royal-red">
+    <h2 class="text-xl font-bold mb-4 text-royal-red">Join Room</h2>
+    <input id="playerName" type="text" placeholder="Your Name" class="border-2 rounded-xl p-3 w-full mb-3 outline-none focus:border-royal-red">
+    <input id="joinCode" type="text" placeholder="Room Code" class="border-2 rounded-xl p-3 w-full mb-4 outline-none uppercase tracking-widest text-center font-bold">
+    <button onclick="handleJoinLobby()" class="bg-royal-red text-white font-bold py-3 rounded-xl w-full uppercase">Enter Room</button>
+    <button onclick="showScreen('screenInitial')" class="text-slate-400 mt-4 w-full text-sm hover:underline text-center">← Cancel</button>
+  </div>
+
+  <div id="screenLobbyRoom" class="hidden bg-white p-8 rounded-3xl shadow-xl w-full max-w-lg border-x-8 border-london-blue">
+    <div class="text-center mb-6">
+      <span class="text-slate-400 uppercase text-xs font-bold tracking-widest">Share this Code</span>
+      <div id="displayCode" class="text-6xl font-black text-london-blue mt-1">XXXXX</div>
+    </div>
+    <div class="flex flex-col items-center gap-2 mt-4 mb-4">
+      <button onclick="copyInviteLink()" class="bg-slate-100 hover:bg-slate-200 text-london-blue text-[10px] font-bold py-2 px-4 rounded-full transition flex items-center gap-2">
+        <span id="shareBtnText">COPY INVITE LINK</span>
+      </button>
+    </div>
+    <div class="bg-slate-50 rounded-2xl p-4 mb-6">
+      <h3 class="font-bold text-slate-700 mb-3 flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+        Waiting for Players...
+      </h3>
+      <ul id="playerList" class="space-y-2"></ul>
+    </div>
+    <button onclick="enterGamePanel()" class="bg-london-blue text-white font-bold py-4 rounded-2xl w-full shadow-xl hover:scale-[1.02] transition">ENTER GAME PANEL</button>
+  </div>
+
+  <div id="gameArea" class="hidden w-full max-w-6xl flex flex-col gap-6">
+    <div class="grid lg:grid-cols-4 gap-6">
+      <div class="lg:col-span-3 space-y-6">
+        <div class="grid md:grid-cols-3 gap-6">
+          <div class="bg-white p-6 rounded-3xl shadow-lg flex flex-col border-t-8 border-london-blue">
+            <div class="text-center mb-4">
+              <h3 class="font-bold text-slate-400 text-[10px] mb-1 uppercase tracking-widest">Now Calling</h3>
+              <div id="bingoCurrent" class="text-6xl font-black text-london-blue leading-tight">-</div>
+            </div>
+            <div class="flex-1 flex flex-col border-t border-slate-100 pt-4">
+              <h3 class="font-bold text-slate-400 text-[10px] mb-3 uppercase tracking-widest">Full History</h3>
+              <div id="historyBox" class="text-[18px] text-slate-500 h-80 overflow-y-auto pr-2 font-mono flex flex-wrap gap-2 content-start scroll-smooth"></div>
+            </div>
+          </div>
+          <div id="cardWrapper" class="md:col-span-2 p-6 rounded-3xl shadow-2xl transition-all border-london-blue border-8 overflow-hidden">
+            <div class="flex justify-between items-center mb-6 text-white">
+              <div class="flex flex-col">
+                <h2 id="cardOwnerName" class="text-2xl font-black uppercase italic tracking-tighter">Your Card</h2>
+                <span class="text-[10px] opacity-75 uppercase font-bold">Big Ben Manila</span>
+              </div>
+              <div class="flex gap-2">
+                <button onclick="downloadCard()" class="bg-green-600 text-white px-3 py-2 rounded-xl font-bold text-xs shadow-xl active:scale-95 transition">DOWNLOAD</button>
+                <button id="btnNewCard" onclick="generateCard()" class="bg-white text-london-blue px-3 py-2 rounded-xl font-bold text-xs shadow-xl active:scale-95 transition">REFRESH</button>
+              </div>
+            </div>
+            <div class="flex justify-center overflow-x-auto pb-4">
+              <table id="bingoCard" class="border-separate border-spacing-2">
+                <thead class="text-white font-black text-3xl">
+                  <tr><th>B</th><th>I</th><th>N</th><th>G</th><th>O</th></tr>
+                </thead>
+                <tbody class="bg-white rounded-2xl overflow-hidden"></tbody>
+              </table>
+            </div>
+          </div> 
+        </div>
+      </div>
+      <div class="lg:col-span-1 space-y-6">
+        <div class="bg-white p-6 rounded-3xl shadow-md border-b-4 border-slate-200">
+          <div class="mb-4 text-center">
+            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Room Code</span>
+            <div id="gameRoomCode" class="text-2xl font-black text-london-blue tracking-widest">XXXXX</div>
+          </div>
+          <div class="flex flex-col items-center gap-2 mt-4 mb-4">
+            <button onclick="copyInviteLink()" class="bg-slate-100 hover:bg-slate-200 text-london-blue text-[10px] font-bold py-2 px-4 rounded-full transition flex items-center gap-2">
+              <span id="shareBtnText">COPY INVITE LINK</span>
+            </button>
+            <button onclick="leaveRoom()" class="w-full mt-4 text-slate-400 hover:text-royal-red text-[10px] font-bold uppercase tracking-widest transition border-t pt-4">
+              Leave Room
+            </button>
+          </div>
+          <h3 class="font-bold text-slate-400 text-xs uppercase mb-4 tracking-widest border-t pt-4">Players</h3>
+          <ul id="gamePlayerList" class="space-y-2"></ul>
+          <div id="jackpotStatus" class="mt-4 text-center p-2 bg-royal-red text-white rounded-lg text-xs font-bold hidden animate-bounce">BLACKOUT MODE</div>
+        </div>
+        <div id="hostControlsPanel" class="hidden bg-london-blue p-6 rounded-3xl shadow-xl text-white space-y-3">
+          <button id="btnStartGame" onclick="triggerStartGame()" class="w-full bg-royal-red text-white font-bold py-3 rounded-xl shadow-lg transition">START GAME</button>
+          <div id="activeHostButtons" class="hidden space-y-3">
+            <button onclick="callNumber()" class="w-full bg-green-500 text-white font-bold py-3 rounded-xl shadow-inner active:scale-95 transition">CALL NUMBER</button>
+            <button onclick="toggleJackpotMode()" id="jackpotBtn" class="w-full border-2 border-white/30 hover:bg-white/10 py-2 rounded-xl text-sm font-bold transition uppercase">BLACKOUT</button>
+          </div>
+          <button onclick="resetBingo()" class="w-full text-white/50 text-[10px] font-bold pt-2 uppercase">RESET GAME STATE</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="mt-16 mb-12 flex flex-col items-center gap-6 opacity-60">
+    <div class="h-px w-32 bg-slate-300"></div>
+    <div class="flex items-center gap-3">
+      <img src="https://scrmbldgreg.github.io/bingo-manila/assets/gemini-ai-logo.png" alt="Gemini Logo" class="w-6 h-6 animate-pulse">
+      <p class="text-[10px] font-bold tracking-[0.2em] text-london-blue uppercase">Powered by Gemini AI</p>
+    </div>
+    <img src="https://scrmbldgreg.github.io/bingo-manila/assets/scrmbldgreg.png" alt="SCRMBLDGREG Logo" class="h-8 object-contain">
+    <p class="text-[9px] font-medium text-slate-400 tracking-wider uppercase">&copy; 2026 Big Ben Manila</p>
+  </footer>
+
+<script>
 /* ================= FIREBASE CONFIG ================= */
 const firebaseConfig = {
   apiKey: "AIzaSyBznF9jfkpSnKigpMnM706dXL_ZMOjUOAw",
@@ -315,3 +464,6 @@ function copyInviteLink() {
     setTimeout(() => { btnText.textContent = "COPY INVITE LINK"; }, 2000);
   });
 }
+</script>
+</body>
+</html>
