@@ -116,6 +116,9 @@
             <button onclick="copyInviteLink()" class="bg-slate-100 hover:bg-slate-200 text-london-blue text-[10px] font-bold py-2 px-4 rounded-full transition flex items-center gap-2">
               <span id="shareBtnText">COPY INVITE LINK</span>
             </button>
+            <button onclick="leaveRoom()" class="w-full mt-4 text-slate-400 hover:text-royal-red text-[10px] font-bold uppercase tracking-widest transition border-t pt-4">
+              Leave Room
+            </button>
           </div>
           <h3 class="font-bold text-slate-400 text-xs uppercase mb-4 tracking-widest border-t pt-4">Players</h3>
           <ul id="gamePlayerList" class="space-y-2"></ul>
@@ -219,6 +222,10 @@ async function handleJoinLobby() {
 }
 
 function setupLobby() {
+  // SAVE SESSION TO BROWSER MEMORY
+  const sessionData = { lobby: currentLobby, name: myName, isHost: isHost };
+  localStorage.setItem('bingo_session', JSON.stringify(sessionData));
+
   document.getElementById('displayCode').textContent = currentLobby;
   showScreen('screenLobbyRoom');
 
@@ -228,6 +235,7 @@ function setupLobby() {
 
     if (!data.players.includes(myName)) {
       alert("You have been removed.");
+      localStorage.removeItem('bingo_session'); // Clear session if kicked
       location.reload();
       return;
     }
@@ -266,10 +274,19 @@ function updatePlayerUI(players, hostName, winnerList) {
 function enterGamePanel() {
   showScreen('gameArea');
   document.getElementById('gameRoomCode').textContent = currentLobby;
+  
+  // Always check isHost here to show/hide controls
+  const controls = document.getElementById('hostControlsPanel');
   if (isHost) {
-    document.getElementById('hostControlsPanel').classList.remove('hidden');
-    gameNumbersPool = Array.from({length: 75}, (_, i) => i + 1);
+    controls.classList.remove('hidden');
+    // Don't overwrite the pool if game is already started
+    if (gameNumbersPool.length === 0) {
+       gameNumbersPool = Array.from({length: 75}, (_, i) => i + 1);
+    }
+  } else {
+    controls.classList.add('hidden');
   }
+  
   generateCard();
 }
 
@@ -419,18 +436,51 @@ async function downloadCard() {
   link.click();
 }
 
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('DOMContentLoaded', async () => {
   const params = new URLSearchParams(window.location.search);
-  const roomCode = params.get('room');
-  
-  if (roomCode) {
-    // Switch to Join screen and fill the code
+  const roomFromUrl = params.get('room');
+  const savedSession = localStorage.getItem('bingo_session');
+
+  if (savedSession) {
+    const session = JSON.parse(savedSession);
+    const snapshot = await db.ref('lobbies/' + session.lobby).get();
+    
+    if (snapshot.exists()) {
+      const data = snapshot.val();
+      currentLobby = session.lobby;
+      myName = session.name;
+      
+      // CRITICAL FIX: Verify host status against the database
+      isHost = (data.host === myName);
+      
+      setupLobby();
+      
+      setTimeout(() => {
+        if (data.gameState.gameStarted) enterGamePanel();
+      }, 1000);
+    } else {
+      localStorage.removeItem('bingo_session');
+    }
+  } else if (roomFromUrl) {
     showScreen('screenJoin');
-    document.getElementById('joinCode').value = roomCode.toUpperCase();
-    // Optional: focus on the name input for the player
-    document.getElementById('playerName').focus();
+    document.getElementById('joinCode').value = roomFromUrl.toUpperCase();
   }
 });
+
+async function leaveRoom() {
+  if (!confirm("Are you sure you want to leave this room?")) return;
+
+  if (!isHost && currentLobby) {
+    // Remove name from Firebase so host sees you left
+    const snapshot = await db.ref(`lobbies/${currentLobby}/players`).get();
+    let players = snapshot.val() || [];
+    players = players.filter(p => p !== myName);
+    await db.ref(`lobbies/${currentLobby}/players`).set(players);
+  }
+
+  localStorage.removeItem('bingo_session');
+  location.href = window.location.pathname; // Clean reload
+}
 
 function copyInviteLink() {
   const url = `${window.location.origin}${window.location.pathname}?room=${currentLobby}`;
