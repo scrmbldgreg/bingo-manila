@@ -55,6 +55,11 @@
       <span class="text-slate-400 uppercase text-xs font-bold tracking-widest">Share this Code</span>
       <div id="displayCode" class="text-6xl font-black text-london-blue mt-1">XXXXX</div>
     </div>
+    <div class="flex flex-col items-center gap-2 mt-4 mb-4">
+      <button onclick="copyInviteLink()" class="bg-slate-100 hover:bg-slate-200 text-london-blue text-[10px] font-bold py-2 px-4 rounded-full transition flex items-center gap-2">
+        <span id="shareBtnText">COPY INVITE LINK</span>
+      </button>
+    </div>
     <div class="bg-slate-50 rounded-2xl p-4 mb-6">
       <h3 class="font-bold text-slate-700 mb-3 flex items-center gap-2">
         <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
@@ -407,6 +412,29 @@ async function downloadCard() {
   link.download = `${myName}-BigBen.png`;
   link.href = canvas.toDataURL("image/png");
   link.click();
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  const params = new URLSearchParams(window.location.search);
+  const roomCode = params.get('room');
+  
+  if (roomCode) {
+    // Switch to Join screen and fill the code
+    showScreen('screenJoin');
+    document.getElementById('joinCode').value = roomCode.toUpperCase();
+    // Optional: focus on the name input for the player
+    document.getElementById('playerName').focus();
+  }
+});
+
+function copyInviteLink() {
+  const url = `${window.location.origin}${window.location.pathname}?room=${currentLobby}`;
+  
+  navigator.clipboard.writeText(url).then(() => {
+    const btnText = document.getElementById('shareBtnText');
+    btnText.textContent = "LINK COPIED!";
+    setTimeout(() => { btnText.textContent = "COPY INVITE LINK"; }, 2000);
+  });
 }
 </script>
 </body>
