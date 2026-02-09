@@ -184,7 +184,7 @@ const db = firebase.database();
 
 let currentLobby = null, myName = null, isHost = false;
 let gameNumbersPool = [], calledNumbers = [], isJackpotMode = false, gameStarted = false;
-let isRolling = false; // Flag for slot machine effect
+let isRolling = false;
 
 /* ================= NAVIGATION ================= */
 function showScreen(id) {
@@ -272,17 +272,13 @@ function setupLobby() {
   document.getElementById('displayCode').textContent = currentLobby;
   showScreen('screenLobbyRoom');
 
-  // Handle Waiting Room Cancel Button
+  // Handle Waiting Room Cancel Button Visibility
   const cancelBtn = document.getElementById('btnCancelLobby');
-  if (cancelBtn) {
-    cancelBtn.classList.toggle('hidden', !isHost);
-  }
+  if (cancelBtn) cancelBtn.classList.toggle('hidden', !isHost);
 
-  // Handle Game Area Leave/Close Button
+  // Handle Game Area Leave Button Visibility/Text
   const gameLeaveBtn = document.getElementById('btnGameLeave');
   if (gameLeaveBtn) {
-    // Host sees "Close Lobby", Players don't see this footer button at all 
-    // (because they will have the badge instead)
     gameLeaveBtn.classList.toggle('hidden', !isHost);
     if (isHost) gameLeaveBtn.textContent = "End Lobby";
   }
@@ -376,7 +372,8 @@ function toggleJackpotMode() {
 }
 
 async function leaveRoom() {
-  if (!confirm("Exit session?")) return;
+  const msg = isHost ? "Close session for everyone?" : "Leave session?";
+  if (!confirm(msg)) return;
   if (isHost) await db.ref(`lobbies/${currentLobby}`).remove();
   else {
     const snapshot = await db.ref(`lobbies/${currentLobby}/players`).get();
@@ -389,38 +386,69 @@ async function leaveRoom() {
 
 /* ================= UI RENDERING ================= */
 
+function clearCardMarksUI() {
+  const cells = document.querySelectorAll('#bingoCard td');
+  cells.forEach(td => {
+    td.classList.remove('marked', 'winning-cell');
+    td.classList.add('bg-white'); // Fix white background
+    if (td.textContent === "FREE") {
+      td.classList.remove('bg-white');
+      td.classList.add('marked'); 
+    }
+  });
+}
+
 function render(state) {
   const display = document.getElementById('bingoCurrent');
   const newNum = state.lastNum || '-';
   const oldNum = display.dataset.current || '-';
+  const historyBox = document.getElementById('historyBox');
+  const nums = state.calledNumbers || [];
+
+  // Function to render the history list
+  const updateHistoryUI = (numberList, finalNum) => {
+    historyBox.innerHTML = numberList.map(n => {
+      const isLast = (n === finalNum);
+      return `<span class="${isLast ? 'bg-royal-red text-white scale-110 shadow-md ring-2 ring-red-300' : 'bg-slate-100 text-slate-800'} px-3 py-1 rounded-lg border font-bold transition-all transform animate-fade-in">${n}</span>`;
+    }).join('');
+    historyBox.scrollTop = historyBox.scrollHeight;
+  };
 
   if (newNum !== oldNum && newNum !== '-' && !isRolling) {
     isRolling = true;
     display.classList.add('slot-rolling');
+    
+    // While rolling, show history WITHOUT the very last number
+    const historyBeforeLast = nums.slice(0, -1);
+    updateHistoryUI(historyBeforeLast, '-');
+
     let rollCount = 0;
     const rollInterval = setInterval(() => {
       const letters = ['B','I','N','G','O'];
       display.textContent = `${letters[Math.floor(Math.random()*5)]}-${Math.floor(Math.random()*75)+1}`;
+      
       if (++rollCount > 15) {
         clearInterval(rollInterval);
         display.classList.remove('slot-rolling');
         display.textContent = newNum;
         display.dataset.current = newNum;
         isRolling = false;
+        
+        // NOW reveal the full history including the new number
+        updateHistoryUI(nums, newNum);
       }
     }, 80);
   } else if (!isRolling) {
     display.textContent = newNum;
     display.dataset.current = newNum;
+    updateHistoryUI(nums, newNum);
   }
 
-  const historyBox = document.getElementById('historyBox');
-  historyBox.innerHTML = (state.calledNumbers || []).map(n => {
-    const isLast = (n === state.lastNum);
-    return `<span class="${isLast ? 'bg-royal-red text-white scale-110 shadow-md ring-2 ring-red-300' : 'bg-slate-100 text-slate-800'} px-3 py-1 rounded-lg border font-bold transition-all transform">${n}</span>`;
-  }).join('');
-  historyBox.scrollTop = historyBox.scrollHeight;
+  if (!state.gameStarted) {
+    clearCardMarksUI();
+  }
 
+  // Handle button states
   const btn = document.getElementById('btnNewCard');
   if (state.gameStarted) {
     btn.disabled = true;
@@ -435,6 +463,18 @@ function render(state) {
   document.getElementById('jackpotBtn').textContent = state.isJackpotMode ? "CLASSIC BINGO" : "BLACKOUT";
 }
 
+function clearCardMarksUI() {
+  const cells = document.querySelectorAll('#bingoCard td');
+  cells.forEach(td => {
+    td.classList.remove('marked', 'winning-cell');
+    td.classList.add('bg-white'); 
+    if (td.textContent === "FREE") {
+      td.classList.remove('bg-white');
+      td.classList.add('marked'); 
+    }
+  });
+}
+
 function updatePlayerUI(players, hostName, winnerList) {
   const gameList = document.getElementById('gamePlayerList');
   if (!gameList) return;
@@ -444,11 +484,9 @@ function updatePlayerUI(players, hostName, winnerList) {
     const isHostUser = (p === hostName);
     const isMe = (p === myName);
     
-    // 1. Host sees Kick button for others
     const kickBtn = (isHost && !isMe) ? 
       `<button onclick="kickPlayer('${p}')" class="ml-2 text-royal-red font-bold text-[8px] uppercase border border-red-200 px-2 py-0.5 rounded-full hover:bg-red-50 transition">Kick</button>` : '';
 
-    // 2. Player sees Leave badge for themselves
     const leaveBadge = (isMe && !isHost) ? 
       `<button onclick="leaveRoom()" class="ml-2 bg-slate-100 text-slate-400 font-bold text-[8px] uppercase border border-slate-200 px-2 py-0.5 rounded-full hover:bg-slate-200 transition">Leave</button>` : '';
 
@@ -476,6 +514,7 @@ async function kickPlayer(playerToKick) {
 }
 
 function generateCard() {
+  clearCardMarksUI();
   const ranges = [[1,15],[16,30],[31,45],[46,60],[61,75]];
   const cols = ranges.map(r => Array.from({length: 15}, (_,i)=>i+r[0]).sort(()=>Math.random()-0.5).slice(0,5));
   const tbody = document.querySelector('#bingoCard tbody');
