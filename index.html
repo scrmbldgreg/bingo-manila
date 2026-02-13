@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Bingo Manila</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -14,12 +14,17 @@
     .bg-london-blue { background-color: var(--london-blue); }
     .text-london-blue { color: var(--london-blue); }
     .bg-royal-red { background-color: var(--royal-red); }
+    /* Touch optimization */
+    button { touch-action: manipulation; }
+    
     .marked { position: relative; background-color: #10b981 !important; color: white !important; }
-    .marked::after { content: '✖'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: rgba(255,255,255,0.4); font-size: 1.5rem; }
+    .marked::after { content: '✖'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: rgba(255,255,255,0.4); font-size: 1.2rem; }
     .winning-cell { position: relative; background-color: #fef08a !important; color: #854d0e !important; }
     .winning-cell::after { content: ''; position: absolute; top: 50%; left: 0; width: 100%; height: 4px; background-color: var(--royal-red); transform: translateY(-50%); z-index: 10; pointer-events: none; }
-    #historyBox::-webkit-scrollbar { width: 6px; }
+    
+    #historyBox::-webkit-scrollbar { width: 4px; }
     #historyBox::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    
     @keyframes slot-spin {
       0% { transform: translateY(-20px); opacity: 0; }
       50% { transform: translateY(0); opacity: 1; }
@@ -39,138 +44,144 @@
     }
   </style>
 </head>
-<body class="bg-slate-50 min-h-screen flex flex-col items-center p-4 font-sans text-slate-900">
+<body class="bg-slate-50 min-h-screen flex flex-col items-center p-2 md:p-4 font-sans text-slate-900 overflow-x-hidden">
 
-  <div class="flex flex-col items-center mb-8">
-    <div class="w-32 h-32 rounded-full border-4 border-white shadow-lg flex items-center justify-center overflow-hidden mb-2">
+  <div class="flex flex-col items-center mb-4 md:mb-8 mt-2">
+    <div class="w-20 h-20 md:w-32 md:h-32 rounded-full border-4 border-white shadow-lg flex items-center justify-center overflow-hidden mb-2">
       <img src="https://scrmbldgreg.github.io/bingo-manila/assets/bigbenmnl.png" alt="Big Ben Manila Logo" class="w-full h-full object-contain p-2">
     </div>
-    <h1 class="text-2xl font-black tracking-tighter text-london-blue uppercase">Big Ben Manila Bingo</h1>
+    <h1 class="text-xl md:text-2xl font-black tracking-tighter text-london-blue uppercase">Big Ben Manila Bingo</h1>
   </div>
 
-  <div id="screenInitial" class="bg-white p-8 rounded-3xl shadow-xl w-full max-w-md flex flex-col gap-4 text-center border-t-8 border-london-blue">
-    <button onclick="showScreen('screenCreate')" class="bg-london-blue hover:opacity-90 text-white font-bold py-4 rounded-2xl transition">CREATE LOBBY</button>
-    <button onclick="showScreen('screenJoin')" class="bg-royal-red hover:opacity-90 text-white font-bold py-4 rounded-2xl transition shadow-lg shadow-red-200">JOIN LOBBY</button>
+  <div id="screenInitial" class="bg-white p-6 md:p-8 rounded-3xl shadow-xl w-full max-w-md flex flex-col gap-4 text-center border-t-8 border-london-blue">
+    <button onclick="showScreen('screenCreate')" class="bg-london-blue hover:opacity-90 text-white font-bold py-4 rounded-2xl transition shadow-md active:scale-95">CREATE LOBBY</button>
+    <button onclick="showScreen('screenJoin')" class="bg-royal-red hover:opacity-90 text-white font-bold py-4 rounded-2xl transition shadow-md shadow-red-200 active:scale-95">JOIN LOBBY</button>
   </div>
 
-  <div id="screenCreate" class="hidden bg-white p-8 rounded-3xl shadow-xl w-full max-w-md border-t-8 border-london-blue">
+  <div id="screenCreate" class="hidden bg-white p-6 md:p-8 rounded-3xl shadow-xl w-full max-w-md border-t-8 border-london-blue">
     <h2 class="text-xl font-bold mb-4 text-london-blue">Host a Game</h2>
-    <input id="hostName" type="text" placeholder="Your Name" class="border-2 rounded-xl p-3 w-full mb-4 outline-none focus:border-london-blue">
-    <button onclick="handleCreateLobby()" class="bg-london-blue text-white font-bold py-3 rounded-xl w-full uppercase">Generate Lobby</button>
-    <button onclick="showScreen('screenInitial')" class="text-slate-400 mt-4 w-full text-sm hover:underline text-center">← Cancel</button>
+    <input id="hostName" type="text" placeholder="Your Name" class="border-2 rounded-xl p-3 w-full mb-4 outline-none focus:border-london-blue appearance-none">
+    <button onclick="handleCreateLobby()" class="bg-london-blue text-white font-bold py-3 rounded-xl w-full uppercase active:scale-95 transition">Generate Lobby</button>
+    <button onclick="showScreen('screenInitial')" class="text-slate-400 mt-4 w-full text-sm hover:underline text-center py-2">← Cancel</button>
   </div>
 
-  <div id="screenJoin" class="hidden bg-white p-8 rounded-3xl shadow-xl w-full max-w-md border-t-8 border-royal-red">
+  <div id="screenJoin" class="hidden bg-white p-6 md:p-8 rounded-3xl shadow-xl w-full max-w-md border-t-8 border-royal-red">
     <h2 class="text-xl font-bold mb-4 text-royal-red">Join Room</h2>
-    <input id="playerName" type="text" placeholder="Your Name" class="border-2 rounded-xl p-3 w-full mb-3 outline-none focus:border-royal-red">
-    <input id="joinCode" type="text" placeholder="Room Code" class="border-2 rounded-xl p-3 w-full mb-4 outline-none uppercase tracking-widest text-center font-bold">
-    <button onclick="handleJoinLobby()" class="bg-royal-red text-white font-bold py-3 rounded-xl w-full uppercase">Enter Room</button>
-    <button onclick="showScreen('screenInitial')" class="text-slate-400 mt-4 w-full text-sm hover:underline text-center">← Cancel</button>
+    <input id="playerName" type="text" placeholder="Your Name" class="border-2 rounded-xl p-3 w-full mb-3 outline-none focus:border-royal-red appearance-none">
+    <input id="joinCode" type="text" placeholder="Room Code" class="border-2 rounded-xl p-3 w-full mb-4 outline-none uppercase tracking-widest text-center font-bold appearance-none">
+    <button onclick="handleJoinLobby()" class="bg-royal-red text-white font-bold py-3 rounded-xl w-full uppercase active:scale-95 transition">Enter Room</button>
+    <button onclick="showScreen('screenInitial')" class="text-slate-400 mt-4 w-full text-sm hover:underline text-center py-2">← Cancel</button>
   </div>
 
-  <div id="screenLobbyRoom" class="hidden bg-white p-8 rounded-3xl shadow-xl w-full max-w-lg border-x-8 border-london-blue">
+  <div id="screenLobbyRoom" class="hidden bg-white p-6 md:p-8 rounded-3xl shadow-xl w-full max-w-lg border-x-8 border-london-blue">
     <div class="text-center mb-6">
       <span class="text-slate-400 uppercase text-xs font-bold tracking-widest">Share this Code</span>
-      <div id="displayCode" class="text-6xl font-black text-london-blue mt-1">XXXXX</div>
-      <!-- <p class="text-[10px] text-red-400 mt-2 font-bold uppercase">Expires in 3 Hours</p> -->
+      <div id="displayCode" class="text-5xl md:text-6xl font-black text-london-blue mt-1">XXXXX</div>
+      <p class="text-[10px] text-red-400 mt-2 font-bold uppercase">Expires in 3 Hours</p>
     </div>
 
     <div class="flex justify-center mb-6">
-        <div id="qrcode" class="p-3 bg-white border-2 border-slate-100 rounded-xl shadow-sm"></div>
+        <div id="qrcode" class="p-2 bg-white border-2 border-slate-100 rounded-xl shadow-sm"></div>
     </div>
 
     <div class="flex flex-col items-center gap-2 mt-4 mb-4">
-      <button onclick="copyInviteLink()" class="bg-slate-100 hover:bg-slate-200 text-london-blue text-[10px] font-bold py-2 px-4 rounded-full transition flex items-center gap-2">
+      <button onclick="copyInviteLink()" class="bg-slate-100 hover:bg-slate-200 text-london-blue text-[10px] font-bold py-3 px-6 rounded-full transition flex items-center gap-2 active:bg-slate-300">
         <span id="shareBtnText">COPY INVITE LINK</span>
       </button>
     </div>
     <div class="bg-slate-50 rounded-2xl p-4 mb-6">
-      <h3 class="font-bold text-slate-700 mb-3 flex items-center gap-2">
+      <h3 class="font-bold text-slate-700 mb-3 flex items-center gap-2 text-sm">
         <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
         Waiting for Players...
       </h3>
-      <ul id="playerList" class="space-y-2"></ul>
+      <ul id="playerList" class="space-y-2 max-h-40 overflow-y-auto"></ul>
     </div>
-    <button onclick="enterGamePanel()" class="bg-london-blue text-white font-bold py-4 rounded-2xl w-full shadow-xl hover:scale-[1.02] transition">ENTER GAME PANEL</button>
-    <button onclick="leaveRoom()" id="btnCancelLobby" class="hidden mt-4 text-slate-400 hover:text-royal-red text-[10px] font-bold uppercase tracking-widest w-full text-center transition">
+    <button onclick="enterGamePanel()" class="bg-london-blue text-white font-bold py-4 rounded-2xl w-full shadow-xl active:scale-95 transition">ENTER GAME PANEL</button>
+    <button onclick="leaveRoom()" id="btnCancelLobby" class="hidden mt-4 text-slate-400 hover:text-royal-red text-[10px] font-bold uppercase tracking-widest w-full text-center transition py-2">
       Close Lobby
     </button>
   </div>
 
-  <div id="gameArea" class="hidden w-full max-w-6xl flex flex-col gap-6">
-    <div class="grid lg:grid-cols-4 gap-6">
-      <div class="lg:col-span-3 space-y-6">
-        <div class="grid md:grid-cols-3 gap-6">
-          <div class="bg-white p-6 rounded-3xl shadow-lg flex flex-col border-t-8 border-london-blue">
-            <div class="text-center mb-4">
+  <div id="gameArea" class="hidden w-full max-w-6xl flex flex-col gap-4 md:gap-6 pb-8">
+    
+    <div class="grid lg:grid-cols-4 gap-4 md:gap-6">
+      
+      <div class="lg:col-span-3 space-y-4 md:space-y-6">
+        <div class="grid md:grid-cols-3 gap-4 md:gap-6">
+          
+          <div class="bg-white p-4 md:p-6 rounded-3xl shadow-lg flex flex-col border-t-8 border-london-blue order-2 md:order-1">
+            <div class="text-center mb-2 md:mb-4">
               <h3 class="font-bold text-slate-400 text-[10px] mb-1 uppercase tracking-widest">Now Calling</h3>
-              <div id="bingoCurrent" class="text-6xl font-black text-london-blue leading-tight">-</div>
+              <div id="bingoCurrent" class="text-5xl md:text-6xl font-black text-london-blue leading-tight">-</div>
             </div>
-            <div class="flex-1 flex flex-col border-t border-slate-100 pt-4">
-              <h3 class="font-bold text-slate-400 text-[10px] mb-3 uppercase tracking-widest">Full History</h3>
-              <div id="historyBox" class="text-[18px] text-slate-500 h-80 overflow-y-auto pr-2 font-mono flex flex-wrap gap-2 content-start scroll-smooth"></div>
+            <div class="flex-1 flex flex-col border-t border-slate-100 pt-2 md:pt-4">
+              <h3 class="font-bold text-slate-400 text-[10px] mb-2 uppercase tracking-widest">History</h3>
+              <div id="historyBox" class="text-base md:text-[18px] text-slate-500 h-24 md:h-80 overflow-y-auto pr-1 font-mono flex flex-wrap gap-1 content-start scroll-smooth"></div>
             </div>
           </div>
-          <div id="cardWrapper" class="md:col-span-2 p-6 rounded-3xl shadow-2xl transition-all border-london-blue border-8 overflow-hidden">
-            <div class="flex justify-between items-center mb-6 text-white">
+
+          <div id="cardWrapper" class="md:col-span-2 p-3 md:p-6 rounded-3xl shadow-2xl transition-all border-london-blue border-4 md:border-8 overflow-hidden order-1 md:order-2">
+            <div class="flex justify-between items-center mb-2 md:mb-6 text-white">
               <div class="flex flex-col">
-                <h2 id="cardOwnerName" class="text-2xl font-black uppercase italic tracking-tighter">Your Card</h2>
-                <span class="text-[10px] opacity-75 uppercase font-bold">Big Ben Manila</span>
+                <h2 id="cardOwnerName" class="text-lg md:text-2xl font-black uppercase italic tracking-tighter truncate max-w-[150px] md:max-w-none">Your Card</h2>
+                <span class="text-[9px] md:text-[10px] opacity-75 uppercase font-bold">Big Ben Manila</span>
               </div>
-              <div class="flex gap-2">
-                <button onclick="downloadCard()" class="bg-green-600 text-white px-3 py-2 rounded-xl font-bold text-xs shadow-xl active:scale-95 transition">DOWNLOAD</button>
-                <button id="btnNewCard" onclick="generateCard()" class="bg-white text-london-blue px-3 py-2 rounded-xl font-bold text-xs shadow-xl active:scale-95 transition">REFRESH</button>
+              <div class="flex gap-1 md:gap-2">
+                <button onclick="downloadCard()" class="bg-green-600 text-white px-2 py-1.5 md:px-3 md:py-2 rounded-lg md:rounded-xl font-bold text-[10px] md:text-xs shadow-xl active:scale-95 transition">SAVE</button>
+                <button id="btnNewCard" onclick="generateCard()" class="bg-white text-london-blue px-2 py-1.5 md:px-3 md:py-2 rounded-lg md:rounded-xl font-bold text-[10px] md:text-xs shadow-xl active:scale-95 transition">NEW</button>
               </div>
             </div>
-            <div class="flex justify-center overflow-x-auto pb-4">
-              <table id="bingoCard" class="border-separate border-spacing-2">
-                <thead class="text-white font-black text-3xl">
+            <div class="flex justify-center overflow-x-auto pb-2">
+              <table id="bingoCard" class="border-separate border-spacing-1 md:border-spacing-2">
+                <thead class="text-white font-black text-xl md:text-3xl">
                   <tr><th>B</th><th>I</th><th>N</th><th>G</th><th>O</th></tr>
                 </thead>
-                <tbody class="bg-white rounded-2xl overflow-hidden"></tbody>
+                <tbody class="bg-white rounded-xl md:rounded-2xl overflow-hidden"></tbody>
               </table>
             </div>
           </div> 
         </div>
       </div>
-      <div class="lg:col-span-1 space-y-6">
-        <div class="bg-white p-6 rounded-3xl shadow-md border-b-4 border-slate-200">
-          <div class="mb-4 text-center">
-            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Room Code</span>
-            <div id="gameRoomCode" class="text-2xl font-black text-london-blue tracking-widest">XXXXX</div>
+
+      <div class="lg:col-span-1 space-y-4 md:space-y-6">
+        
+        <div class="bg-white p-4 md:p-6 rounded-3xl shadow-md border-b-4 border-slate-200">
+          <div class="mb-2 text-center">
+            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Room</span>
+            <div id="gameRoomCode" class="text-xl md:text-2xl font-black text-london-blue tracking-widest">XXXXX</div>
           </div>
-          <div class="flex flex-col items-center gap-2 mt-4 mb-4">
-            <button onclick="copyInviteLink()" class="bg-slate-100 hover:bg-slate-200 text-london-blue text-[10px] font-bold py-2 px-4 rounded-full transition flex items-center gap-2">
-              <span id="shareBtnText">COPY INVITE LINK</span>
+          <div class="flex flex-col items-center gap-2 mt-2 mb-2">
+            <button onclick="copyInviteLink()" class="bg-slate-100 hover:bg-slate-200 text-london-blue text-[10px] font-bold py-2 px-4 rounded-full transition flex items-center gap-2 w-full justify-center">
+              <span id="shareBtnText">COPY LINK</span>
             </button>
-            <button id="btnGameLeave" onclick="leaveRoom()" class="w-full mt-4 text-slate-400 hover:text-royal-red text-[10px] font-bold uppercase tracking-widest transition border-t pt-4">
+            <button id="btnGameLeave" onclick="leaveRoom()" class="w-full mt-2 text-slate-400 hover:text-royal-red text-[10px] font-bold uppercase tracking-widest transition border-t pt-2">
               Leave Room
             </button>
           </div>
-          <h3 class="font-bold text-slate-400 text-xs uppercase mb-4 tracking-widest border-t pt-4">Players</h3>
-          <ul id="gamePlayerList" class="space-y-2"></ul>
+          <h3 class="font-bold text-slate-400 text-xs uppercase mb-2 tracking-widest border-t pt-2">Players</h3>
+          <ul id="gamePlayerList" class="space-y-1 max-h-32 overflow-y-auto"></ul>
           <div id="jackpotStatus" class="mt-4 text-center p-2 bg-royal-red text-white rounded-lg text-xs font-bold hidden animate-bounce">BLACKOUT MODE</div>
         </div>
-        <div id="hostControlsPanel" class="hidden bg-london-blue p-6 rounded-3xl shadow-xl text-white space-y-3">
-          <button id="btnStartGame" onclick="triggerStartGame()" class="w-full bg-royal-red text-white font-bold py-3 rounded-xl shadow-lg transition">START GAME</button>
+
+        <div id="hostControlsPanel" class="hidden bg-london-blue p-4 md:p-6 rounded-3xl shadow-xl text-white space-y-3">
+          <button id="btnStartGame" onclick="triggerStartGame()" class="w-full bg-royal-red text-white font-bold py-3 rounded-xl shadow-lg transition active:scale-95">START GAME</button>
           <div id="activeHostButtons" class="hidden space-y-3">
-            <button onclick="callNumber()" class="w-full bg-green-500 text-white font-bold py-3 rounded-xl shadow-inner active:scale-95 transition">CALL NUMBER</button>
+            <button onclick="callNumber()" class="w-full bg-green-500 text-white font-bold py-4 rounded-xl shadow-inner active:scale-95 transition text-lg">CALL NUMBER</button>
             <button onclick="toggleJackpotMode()" id="jackpotBtn" class="w-full border-2 border-white/30 hover:bg-white/10 py-2 rounded-xl text-sm font-bold transition uppercase">BLACKOUT</button>
           </div>
-          <button onclick="resetBingo()" class="w-full text-white/50 text-[10px] font-bold pt-2 uppercase">RESET GAME STATE</button>
+          <button onclick="resetBingo()" class="w-full text-white/50 text-[10px] font-bold pt-2 uppercase">RESET</button>
         </div>
       </div>
     </div>
   </div>
 
-  <footer class="mt-16 mb-12 flex flex-col items-center gap-6 opacity-60">
-    <div class="h-px w-32 bg-slate-300"></div>
-    <div class="flex items-center gap-3">
-      <img src="https://scrmbldgreg.github.io/bingo-manila/assets/gemini-ai-logo.png" alt="Gemini Logo" class="w-6 h-6 animate-pulse">
-      <p class="text-[10px] font-bold tracking-[0.2em] text-london-blue uppercase">Powered by Gemini AI</p>
+  <footer class="mt-8 mb-8 flex flex-col items-center gap-4 opacity-60">
+    <div class="h-px w-24 bg-slate-300"></div>
+    <div class="flex items-center gap-2">
+      <img src="https://scrmbldgreg.github.io/bingo-manila/assets/gemini-ai-logo.png" alt="Gemini Logo" class="w-4 h-4 md:w-6 md:h-6 animate-pulse">
+      <p class="text-[8px] md:text-[10px] font-bold tracking-[0.2em] text-london-blue uppercase">Powered by Gemini AI</p>
     </div>
-    <img src="https://scrmbldgreg.github.io/bingo-manila/assets/scrmbldgreg.png" alt="SCRMBLDGREG Logo" class="h-8 object-contain">
-    <p class="text-[9px] font-medium text-slate-400 tracking-wider uppercase">&copy; 2026 Big Ben Manila</p>
+    <p class="text-[8px] font-medium text-slate-400 tracking-wider uppercase">&copy; 2026 Big Ben Manila</p>
   </footer>
 
 <script>
@@ -189,9 +200,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-// 3 Hours in Milliseconds
 const LOBBY_LIFETIME = 3 * 60 * 60 * 1000;
-
 let currentLobby = null, myName = null, isHost = false;
 let gameNumbersPool = [], calledNumbers = [], isJackpotMode = false, gameStarted = false;
 let isRolling = false;
@@ -201,6 +210,7 @@ function showScreen(id) {
   ['screenInitial', 'screenCreate', 'screenJoin', 'screenLobbyRoom', 'gameArea'].forEach(s => 
     document.getElementById(s).classList.add('hidden'));
   document.getElementById(id).classList.remove('hidden');
+  window.scrollTo(0,0);
 }
 
 /* ================= SESSION RECOVERY ================= */
@@ -215,19 +225,14 @@ window.addEventListener('DOMContentLoaded', async () => {
     
     if (snapshot.exists()) {
       const data = snapshot.val();
-      
-      // CHECK EXPIRATION ON LOAD
       if (checkExpiration(data.createdAt)) return;
-
       currentLobby = session.lobby;
       myName = session.name;
       isHost = (data.host === myName);
-      
       if (isHost) {
         db.ref(`lobbies/${currentLobby}/hostActive`).set(true);
         db.ref(`lobbies/${currentLobby}/hostActive`).onDisconnect().set(false);
       }
-
       setupLobby();
       if (data.gameState && data.gameState.gameStarted) {
           setTimeout(enterGamePanel, 500);
@@ -242,14 +247,11 @@ window.addEventListener('DOMContentLoaded', async () => {
 });
 
 /* ================= CLOUD LOGIC ================= */
-
-// Helper to check expiration
 function checkExpiration(createdAt) {
-  // If lobby has a timestamp and is older than LOBBY_LIFETIME
   if (createdAt && (Date.now() - createdAt > LOBBY_LIFETIME)) {
-    alert("This lobby has expired (3-hour limit).");
+    alert("Lobby expired.");
     localStorage.removeItem('bingo_session');
-    if (currentLobby) leaveRoom(true); // Force leave
+    if (currentLobby) leaveRoom(true); 
     else location.reload();
     return true;
   }
@@ -258,19 +260,17 @@ function checkExpiration(createdAt) {
 
 async function handleCreateLobby() {
   const name = document.getElementById('hostName').value.trim();
-  if (!name) return alert("Please enter your name");
+  if (!name) return alert("Enter name");
   const code = Math.random().toString(36).substring(2, 7).toUpperCase();
   currentLobby = code; myName = name; isHost = true;
 
-  const lobbyRef = db.ref('lobbies/' + code);
-  await lobbyRef.set({
-    createdAt: firebase.database.ServerValue.TIMESTAMP, // Store creation time
+  await db.ref('lobbies/' + code).set({
+    createdAt: firebase.database.ServerValue.TIMESTAMP,
     host: name, 
     players: [name],
     hostActive: true,
     gameState: { calledNumbers: [], isJackpotMode: false, gameStarted: false, winners: [], lastNum: '-' }
   });
-
   db.ref(`lobbies/${code}/hostActive`).onDisconnect().set(false);
   setupLobby();
 }
@@ -282,16 +282,11 @@ async function handleJoinLobby() {
 
   const snapshot = await db.ref('lobbies/' + code).get();
   if (!snapshot.exists()) return alert("Room not found");
-
   const data = snapshot.val();
-  
-  // CHECK EXPIRATION BEFORE JOINING
   if (checkExpiration(data.createdAt)) return;
 
   const existingPlayers = data.players || [];
-  if (existingPlayers.some(p => p.toLowerCase() === name.toLowerCase())) {
-    return alert("Name taken!");
-  }
+  if (existingPlayers.some(p => p.toLowerCase() === name.toLowerCase())) return alert("Name taken!");
 
   existingPlayers.push(name);
   await db.ref('lobbies/' + code + '/players').set(existingPlayers);
@@ -304,26 +299,19 @@ function setupLobby() {
   document.getElementById('displayCode').textContent = currentLobby;
   showScreen('screenLobbyRoom');
   
-  // === QR CODE GENERATION LOGIC ===
   const qrContainer = document.getElementById('qrcode');
   if (qrContainer) {
-    qrContainer.innerHTML = ''; // Clear previous code
+    qrContainer.innerHTML = '';
     const inviteUrl = `${window.location.origin}${window.location.pathname}?room=${currentLobby}`;
     new QRCode(qrContainer, {
-        text: inviteUrl,
-        width: 120,
-        height: 120,
-        colorDark : "#002147",
-        colorLight : "#ffffff",
-        correctLevel : QRCode.CorrectLevel.H
+        text: inviteUrl, width: 100, height: 100,
+        colorDark : "#002147", colorLight : "#ffffff",
+        correctLevel : QRCode.CorrectLevel.L
     });
   }
 
-  // Handle Waiting Room Cancel Button Visibility
   const cancelBtn = document.getElementById('btnCancelLobby');
   if (cancelBtn) cancelBtn.classList.toggle('hidden', !isHost);
-
-  // Handle Game Area Leave Button Visibility/Text
   const gameLeaveBtn = document.getElementById('btnGameLeave');
   if (gameLeaveBtn) {
     gameLeaveBtn.classList.toggle('hidden', !isHost);
@@ -333,13 +321,11 @@ function setupLobby() {
   db.ref('lobbies/' + currentLobby).on('value', (snapshot) => {
     const data = snapshot.val();
     if (!data) {
-      alert("The session has ended.");
+      alert("Session ended.");
       localStorage.removeItem('bingo_session');
       location.href = window.location.pathname; 
       return;
     }
-
-    // CONTINUOUS EXPIRATION CHECK
     if (checkExpiration(data.createdAt)) return;
 
     const players = data.players || [];
@@ -349,25 +335,15 @@ function setupLobby() {
           const isHostUser = (p === data.host);
           const isMe = (p === myName);
           const kickBtn = (isHost && !isMe) ? 
-            `<button onclick="kickPlayer('${p}')" class="ml-2 text-royal-red font-bold text-[8px] uppercase border border-red-200 px-2 py-1 rounded-md hover:bg-red-50 transition">Kick</button>` : '';
+            `<button onclick="kickPlayer('${p}')" class="ml-2 text-royal-red font-bold text-[8px] uppercase border border-red-200 px-2 py-1 rounded-md hover:bg-red-50">Kick</button>` : '';
           const leaveBtn = (isMe && !isHost) ? 
-            `<button onclick="leaveRoom()" class="ml-2 text-slate-400 font-bold text-[8px] uppercase border border-slate-200 px-2 py-1 rounded-md hover:bg-slate-50 transition">Leave</button>` : '';
-
-          return `
-            <li class="p-3 bg-white rounded-xl border-2 border-slate-100 flex justify-between items-center text-sm shadow-sm animate-fade-in">
-              <span class="font-bold text-slate-700">${p}</span>
-              <div class="flex items-center gap-1">
-                ${isHostUser ? '<span class="text-[8px] bg-london-blue text-white px-2 py-0.5 rounded-full font-black uppercase tracking-tighter">HOST</span>' : ''}
-                ${kickBtn} ${leaveBtn}
-              </div>
-            </li>`;
+            `<button onclick="leaveRoom()" class="ml-2 text-slate-400 font-bold text-[8px] uppercase border border-slate-200 px-2 py-1 rounded-md hover:bg-slate-50">Leave</button>` : '';
+          return `<li class="p-2 bg-white rounded-lg border border-slate-100 flex justify-between items-center text-xs shadow-sm animate-fade-in"><span class="font-bold text-slate-700">${p}</span><div class="flex items-center gap-1">${isHostUser ? '<span class="text-[7px] bg-london-blue text-white px-2 py-0.5 rounded-full font-black uppercase">HOST</span>' : ''}${kickBtn} ${leaveBtn}</div></li>`;
         }).join('');
     }
-
     gameStarted = data.gameState.gameStarted;
     calledNumbers = data.gameState.calledNumbers || [];
     isJackpotMode = data.gameState.isJackpotMode;
-
     updatePlayerUI(players, data.host, data.gameState.winners || []);
     render(data.gameState);
   });
@@ -376,12 +352,10 @@ function setupLobby() {
 function enterGamePanel() {
   showScreen('gameArea');
   document.getElementById('gameRoomCode').textContent = currentLobby;
-  
   if (isHost) {
     document.getElementById('hostControlsPanel').classList.remove('hidden');
     const flatCalled = calledNumbers.map(n => parseInt(n.split('-')[1]));
     gameNumbersPool = Array.from({length: 75}, (_, i) => i + 1).filter(n => !flatCalled.includes(n));
-    
     if (gameStarted) {
        document.getElementById('btnStartGame').classList.add('hidden');
        document.getElementById('activeHostButtons').classList.remove('hidden');
@@ -391,9 +365,8 @@ function enterGamePanel() {
 }
 
 /* ================= GAMEPLAY ================= */
-
 function triggerStartGame() {
-  if (!confirm("Ready to start the game?")) return;
+  if (!confirm("Start game?")) return;
   gameNumbersPool = Array.from({length: 75}, (_, i) => i + 1);
   db.ref('lobbies/' + currentLobby + '/gameState').update({ 
     gameStarted: true, winners: [], calledNumbers: [], lastNum: '-' 
@@ -408,12 +381,10 @@ function callNumber() {
     gameNumbersPool = Array.from({length: 75}, (_, i) => i + 1).filter(n => !flatCalled.includes(n));
   }
   if (gameNumbersPool.length === 0) return alert("All numbers called!");
-
   const idx = Math.floor(Math.random() * gameNumbersPool.length);
   const num = gameNumbersPool.splice(idx, 1)[0];
   const label = (num<=15?'B':num<=30?'I':num<=45?'N':num<=60?'G':'O') + "-" + num;
   calledNumbers.push(label);
-  
   db.ref('lobbies/' + currentLobby + '/gameState').update({ calledNumbers, lastNum: label });
 }
 
@@ -422,9 +393,7 @@ function toggleJackpotMode() {
 }
 
 async function leaveRoom(force = false) {
-  const msg = isHost ? "Close session for everyone?" : "Leave session?";
-  if (!force && !confirm(msg)) return;
-  
+  if (!force && !confirm(isHost ? "End game?" : "Leave game?")) return;
   if (isHost) await db.ref(`lobbies/${currentLobby}`).remove();
   else {
     const snapshot = await db.ref(`lobbies/${currentLobby}/players`).get();
@@ -436,56 +405,34 @@ async function leaveRoom(force = false) {
 }
 
 /* ================= UI RENDERING ================= */
-
-function clearCardMarksUI() {
-  const cells = document.querySelectorAll('#bingoCard td');
-  cells.forEach(td => {
-    td.classList.remove('marked', 'winning-cell');
-    td.classList.add('bg-white'); // Fix white background
-    if (td.textContent === "FREE") {
-      td.classList.remove('bg-white');
-      td.classList.add('marked'); 
-    }
-  });
-}
-
 function render(state) {
   const display = document.getElementById('bingoCurrent');
   const newNum = state.lastNum || '-';
-  const oldNum = display.dataset.current || '-';
-  const historyBox = document.getElementById('historyBox');
   const nums = state.calledNumbers || [];
+  const historyBox = document.getElementById('historyBox');
 
-  // Function to render the history list
   const updateHistoryUI = (numberList, finalNum) => {
     historyBox.innerHTML = numberList.map(n => {
       const isLast = (n === finalNum);
-      return `<span class="${isLast ? 'bg-royal-red text-white scale-110 shadow-md ring-2 ring-red-300' : 'bg-slate-100 text-slate-800'} px-3 py-1 rounded-lg border font-bold transition-all transform animate-fade-in">${n}</span>`;
+      return `<span class="${isLast ? 'bg-royal-red text-white scale-105 shadow-md ring-1 ring-red-300' : 'bg-slate-100 text-slate-800'} px-2 py-1 rounded border text-xs md:text-sm font-bold transition-all">${n}</span>`;
     }).join('');
     historyBox.scrollTop = historyBox.scrollHeight;
   };
 
-  if (newNum !== oldNum && newNum !== '-' && !isRolling) {
+  if (newNum !== display.dataset.current && newNum !== '-' && !isRolling) {
     isRolling = true;
     display.classList.add('slot-rolling');
-    
-    // While rolling, show history WITHOUT the very last number
-    const historyBeforeLast = nums.slice(0, -1);
-    updateHistoryUI(historyBeforeLast, '-');
-
+    updateHistoryUI(nums.slice(0, -1), '-');
     let rollCount = 0;
     const rollInterval = setInterval(() => {
       const letters = ['B','I','N','G','O'];
       display.textContent = `${letters[Math.floor(Math.random()*5)]}-${Math.floor(Math.random()*75)+1}`;
-      
-      if (++rollCount > 15) {
+      if (++rollCount > 10) {
         clearInterval(rollInterval);
         display.classList.remove('slot-rolling');
         display.textContent = newNum;
         display.dataset.current = newNum;
         isRolling = false;
-        
-        // NOW reveal the full history including the new number
         updateHistoryUI(nums, newNum);
       }
     }, 80);
@@ -495,33 +442,28 @@ function render(state) {
     updateHistoryUI(nums, newNum);
   }
 
-  if (!state.gameStarted) {
-    clearCardMarksUI();
-  }
-
-  // Handle button states
+  if (!state.gameStarted) clearCardMarksUI();
+  
   const btn = document.getElementById('btnNewCard');
   if (state.gameStarted) {
     btn.disabled = true;
-    btn.className = "bg-slate-200 text-slate-400 px-3 py-2 rounded-xl font-bold text-xs cursor-not-allowed";
+    btn.className = "bg-slate-200 text-slate-400 px-2 py-1.5 md:px-3 md:py-2 rounded-lg md:rounded-xl font-bold text-[10px] md:text-xs cursor-not-allowed";
     btn.textContent = "LOCKED";
   } else {
     btn.disabled = false;
-    btn.className = "bg-white text-london-blue px-3 py-2 rounded-xl font-bold text-xs shadow-xl transition";
-    btn.textContent = "REFRESH";
+    btn.className = "bg-white text-london-blue px-2 py-1.5 md:px-3 md:py-2 rounded-lg md:rounded-xl font-bold text-[10px] md:text-xs shadow-xl active:scale-95 transition";
+    btn.textContent = "NEW";
   }
   document.getElementById('jackpotStatus').classList.toggle('hidden', !state.isJackpotMode);
-  document.getElementById('jackpotBtn').textContent = state.isJackpotMode ? "CLASSIC BINGO" : "BLACKOUT";
+  document.getElementById('jackpotBtn').textContent = state.isJackpotMode ? "CLASSIC" : "BLACKOUT";
 }
 
 function clearCardMarksUI() {
-  const cells = document.querySelectorAll('#bingoCard td');
-  cells.forEach(td => {
+  document.querySelectorAll('#bingoCard td').forEach(td => {
     td.classList.remove('marked', 'winning-cell');
-    td.classList.add('bg-white'); 
+    td.classList.add('bg-white');
     if (td.textContent === "FREE") {
-      td.classList.remove('bg-white');
-      td.classList.add('marked'); 
+      td.classList.remove('bg-white'); td.classList.add('marked');
     }
   });
 }
@@ -529,39 +471,18 @@ function clearCardMarksUI() {
 function updatePlayerUI(players, hostName, winnerList) {
   const gameList = document.getElementById('gamePlayerList');
   if (!gameList) return;
-
   gameList.innerHTML = players.map(p => {
     const isWinner = winnerList.includes(p);
     const isHostUser = (p === hostName);
-    const isMe = (p === myName);
-    
-    const kickBtn = (isHost && !isMe) ? 
-      `<button onclick="kickPlayer('${p}')" class="ml-2 text-royal-red font-bold text-[8px] uppercase border border-red-200 px-2 py-0.5 rounded-full hover:bg-red-50 transition">Kick</button>` : '';
-
-    const leaveBadge = (isMe && !isHost) ? 
-      `<button onclick="leaveRoom()" class="ml-2 bg-slate-100 text-slate-400 font-bold text-[8px] uppercase border border-slate-200 px-2 py-0.5 rounded-full hover:bg-slate-200 transition">Leave</button>` : '';
-
-    return `
-      <li class="flex items-center justify-between p-3 rounded-xl border-2 transition-all ${isWinner ? 'bg-yellow-50 border-yellow-400 shadow-lg' : 'bg-slate-50 border-slate-100'}">
-        <div class="flex items-center gap-2">
-          <div class="w-2 h-2 rounded-full ${isWinner ? 'bg-yellow-500 animate-pulse' : 'bg-green-500'}"></div>
-          <span class="text-sm font-bold ${isWinner ? 'text-yellow-900' : 'text-slate-700'}">${p}</span>
-        </div>
-        <div class="flex items-center gap-1">
-          ${isHostUser ? '<span class="text-[8px] bg-london-blue text-white px-2 py-0.5 rounded-full font-black uppercase tracking-tighter">HOST</span>' : ''}
-          ${isWinner ? '<span class="text-[9px] bg-yellow-500 text-white px-2 py-0.5 rounded-full font-black uppercase">WINNER</span>' : ''}
-          ${leaveBadge}
-          ${kickBtn}
-        </div>
-      </li>`;
+    const kickBtn = (isHost && p !== myName) ? `<button onclick="kickPlayer('${p}')" class="ml-1 text-royal-red font-bold text-[7px] uppercase border px-1 rounded hover:bg-red-50">Kick</button>` : '';
+    return `<li class="flex items-center justify-between p-2 rounded-lg border ${isWinner ? 'bg-yellow-50 border-yellow-400' : 'bg-slate-50 border-slate-100'}"><div class="flex items-center gap-2"><div class="w-2 h-2 rounded-full ${isWinner ? 'bg-yellow-500 animate-pulse' : 'bg-green-500'}"></div><span class="text-xs font-bold ${isWinner ? 'text-yellow-900' : 'text-slate-700'}">${p}</span></div><div class="flex items-center">${isHostUser ? '<span class="text-[7px] bg-london-blue text-white px-1.5 py-0.5 rounded-full font-black uppercase">HOST</span>' : ''}${isWinner ? '<span class="text-[7px] bg-yellow-500 text-white px-1.5 py-0.5 rounded-full font-black uppercase ml-1">WIN</span>' : ''}${kickBtn}</div></li>`;
   }).join('');
 }
 
 async function kickPlayer(playerToKick) {
   if (!isHost || !confirm(`Remove ${playerToKick}?`)) return;
   const snapshot = await db.ref(`lobbies/${currentLobby}/players`).get();
-  let players = (snapshot.val() || []).filter(p => p !== playerToKick);
-  await db.ref(`lobbies/${currentLobby}/players`).set(players);
+  await db.ref(`lobbies/${currentLobby}/players`).set((snapshot.val() || []).filter(p => p !== playerToKick));
 }
 
 function generateCard() {
@@ -577,14 +498,15 @@ function generateCard() {
     const tr = document.createElement('tr');
     for (let c=0; c<5; c++) {
       const td = document.createElement('td');
-      td.className = "w-14 h-14 md:w-20 md:h-20 bg-white border-2 border-slate-200 text-xl font-black cursor-pointer text-center text-london-blue shadow-inner";
+      // Responsive Cell Sizing: w-11 (mobile) -> w-20 (desktop)
+      td.className = "w-11 h-11 sm:w-14 sm:h-14 md:w-20 md:h-20 bg-white border-2 border-slate-200 text-sm sm:text-lg md:text-xl font-black cursor-pointer text-center text-london-blue shadow-inner touch-manipulation active:bg-slate-100";
       const val = cols[c][r];
       const label = (val<=15?'B':val<=30?'I':val<=45?'N':val<=60?'G':'O') + "-" + val;
       if (r===2 && c===2) { 
-        td.textContent="FREE"; td.classList.add('bg-royal-red', 'marked', 'text-white', 'text-[10px]'); 
+        td.textContent="FREE"; td.classList.add('bg-royal-red', 'marked', 'text-white', 'text-[8px]'); 
       } else { 
         td.textContent = val; td.dataset.label = label; 
-        td.onclick = () => { if (calledNumbers.includes(label)) { td.classList.toggle('marked'); checkWin(); } else { alert("Number not drawn yet!"); } };
+        td.onclick = () => { if (calledNumbers.includes(label)) { td.classList.toggle('marked'); checkWin(); } else { alert("Number not drawn!"); } };
       }
       tr.appendChild(td);
     }
@@ -629,7 +551,7 @@ function copyInviteLink() {
   const url = `${window.location.origin}${window.location.pathname}?room=${currentLobby}`;
   navigator.clipboard.writeText(url).then(() => {
     document.getElementById('shareBtnText').textContent = "COPIED!";
-    setTimeout(() => { document.getElementById('shareBtnText').textContent = "COPY INVITE LINK"; }, 2000);
+    setTimeout(() => { document.getElementById('shareBtnText').textContent = "COPY LINK"; }, 2000);
   });
 }
 
