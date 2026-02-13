@@ -71,6 +71,7 @@
     <div class="text-center mb-6">
       <span class="text-slate-400 uppercase text-xs font-bold tracking-widest">Share this Code</span>
       <div id="displayCode" class="text-6xl font-black text-london-blue mt-1">XXXXX</div>
+      <!-- <p class="text-[10px] text-red-400 mt-2 font-bold uppercase">Expires in 3 Hours</p> -->
     </div>
     <div class="flex flex-col items-center gap-2 mt-4 mb-4">
       <button onclick="copyInviteLink()" class="bg-slate-100 hover:bg-slate-200 text-london-blue text-[10px] font-bold py-2 px-4 rounded-full transition flex items-center gap-2">
@@ -182,6 +183,9 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
+// 3 Hours in Milliseconds
+const LOBBY_LIFETIME = 3 * 60 * 60 * 1000;
+
 let currentLobby = null, myName = null, isHost = false;
 let gameNumbersPool = [], calledNumbers = [], isJackpotMode = false, gameStarted = false;
 let isRolling = false;
@@ -205,6 +209,10 @@ window.addEventListener('DOMContentLoaded', async () => {
     
     if (snapshot.exists()) {
       const data = snapshot.val();
+      
+      // CHECK EXPIRATION ON LOAD
+      if (checkExpiration(data.createdAt)) return;
+
       currentLobby = session.lobby;
       myName = session.name;
       isHost = (data.host === myName);
@@ -229,6 +237,19 @@ window.addEventListener('DOMContentLoaded', async () => {
 
 /* ================= CLOUD LOGIC ================= */
 
+// Helper to check expiration
+function checkExpiration(createdAt) {
+  // If lobby has a timestamp and is older than LOBBY_LIFETIME
+  if (createdAt && (Date.now() - createdAt > LOBBY_LIFETIME)) {
+    alert("This lobby has expired (3-hour limit).");
+    localStorage.removeItem('bingo_session');
+    if (currentLobby) leaveRoom(true); // Force leave
+    else location.reload();
+    return true;
+  }
+  return false;
+}
+
 async function handleCreateLobby() {
   const name = document.getElementById('hostName').value.trim();
   if (!name) return alert("Please enter your name");
@@ -237,6 +258,7 @@ async function handleCreateLobby() {
 
   const lobbyRef = db.ref('lobbies/' + code);
   await lobbyRef.set({
+    createdAt: firebase.database.ServerValue.TIMESTAMP, // Store creation time
     host: name, 
     players: [name],
     hostActive: true,
@@ -256,6 +278,10 @@ async function handleJoinLobby() {
   if (!snapshot.exists()) return alert("Room not found");
 
   const data = snapshot.val();
+  
+  // CHECK EXPIRATION BEFORE JOINING
+  if (checkExpiration(data.createdAt)) return;
+
   const existingPlayers = data.players || [];
   if (existingPlayers.some(p => p.toLowerCase() === name.toLowerCase())) {
     return alert("Name taken!");
@@ -291,6 +317,10 @@ function setupLobby() {
       location.href = window.location.pathname; 
       return;
     }
+
+    // CONTINUOUS EXPIRATION CHECK
+    // If the game drags on past 3 hours, this will trigger on the next DB update
+    if (checkExpiration(data.createdAt)) return;
 
     const players = data.players || [];
     const lobbyList = document.getElementById('playerList');
@@ -371,9 +401,10 @@ function toggleJackpotMode() {
   db.ref('lobbies/' + currentLobby + '/gameState').update({ isJackpotMode: !isJackpotMode });
 }
 
-async function leaveRoom() {
+async function leaveRoom(force = false) {
   const msg = isHost ? "Close session for everyone?" : "Leave session?";
-  if (!confirm(msg)) return;
+  if (!force && !confirm(msg)) return;
+  
   if (isHost) await db.ref(`lobbies/${currentLobby}`).remove();
   else {
     const snapshot = await db.ref(`lobbies/${currentLobby}/players`).get();
