@@ -6,6 +6,7 @@
   <title>Bingo Manila</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
   <style>
@@ -73,6 +74,11 @@
       <div id="displayCode" class="text-6xl font-black text-london-blue mt-1">XXXXX</div>
       <!-- <p class="text-[10px] text-red-400 mt-2 font-bold uppercase">Expires in 3 Hours</p> -->
     </div>
+
+    <div class="flex justify-center mb-6">
+        <div id="qrcode" class="p-3 bg-white border-2 border-slate-100 rounded-xl shadow-sm"></div>
+    </div>
+
     <div class="flex flex-col items-center gap-2 mt-4 mb-4">
       <button onclick="copyInviteLink()" class="bg-slate-100 hover:bg-slate-200 text-london-blue text-[10px] font-bold py-2 px-4 rounded-full transition flex items-center gap-2">
         <span id="shareBtnText">COPY INVITE LINK</span>
@@ -297,6 +303,21 @@ function setupLobby() {
   localStorage.setItem('bingo_session', JSON.stringify({ lobby: currentLobby, name: myName, isHost: isHost }));
   document.getElementById('displayCode').textContent = currentLobby;
   showScreen('screenLobbyRoom');
+  
+  // === QR CODE GENERATION LOGIC ===
+  const qrContainer = document.getElementById('qrcode');
+  if (qrContainer) {
+    qrContainer.innerHTML = ''; // Clear previous code
+    const inviteUrl = `${window.location.origin}${window.location.pathname}?room=${currentLobby}`;
+    new QRCode(qrContainer, {
+        text: inviteUrl,
+        width: 120,
+        height: 120,
+        colorDark : "#002147",
+        colorLight : "#ffffff",
+        correctLevel : QRCode.CorrectLevel.H
+    });
+  }
 
   // Handle Waiting Room Cancel Button Visibility
   const cancelBtn = document.getElementById('btnCancelLobby');
@@ -319,7 +340,6 @@ function setupLobby() {
     }
 
     // CONTINUOUS EXPIRATION CHECK
-    // If the game drags on past 3 hours, this will trigger on the next DB update
     if (checkExpiration(data.createdAt)) return;
 
     const players = data.players || [];
