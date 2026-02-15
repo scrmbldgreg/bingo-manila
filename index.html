@@ -208,7 +208,8 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-const LOBBY_LIFETIME = 3 * 60 * 60 * 1000;
+const LOBBY_LIFETIME = 3 * 60 * 60 * 1000; // Server lobby life
+const INACTIVITY_LIMIT = 2 * 60 * 60 * 1000; // 2 Hours (Client side)
 let currentLobby = null, myName = null, isHost = false;
 let gameNumbersPool = [], calledNumbers = [], isJackpotMode = false, gameStarted = false;
 let isRolling = false;
@@ -225,39 +226,49 @@ function showScreen(id) {
 /* ================= SESSION RECOVERY ================= */
 window.addEventListener('DOMContentLoaded', async () => {
   const params = new URLSearchParams(window.location.search);
-  
-  // NEW: Check for reset flag immediately
-  if (params.get('reset') === 'true') {
-    localStorage.removeItem('bingo_session');
-    // Remove the query param from URL so it doesn't stay there
-    window.history.replaceState({}, document.title, window.location.pathname);
-  }
-
   const roomFromUrl = params.get('room');
   const savedSession = localStorage.getItem('bingo_session');
 
   if (savedSession) {
     const session = JSON.parse(savedSession);
-    const snapshot = await db.ref('lobbies/' + session.lobby).get();
     
-    if (snapshot.exists()) {
-      const data = snapshot.val();
-      if (checkExpiration(data.createdAt)) return;
-      currentLobby = session.lobby;
-      myName = session.name;
-      isHost = (data.host === myName);
-      if (isHost) {
-        db.ref(`lobbies/${currentLobby}/hostActive`).set(true);
-        db.ref(`lobbies/${currentLobby}/hostActive`).onDisconnect().set(false);
-      }
-      setupLobby();
-      if (data.gameState && data.gameState.gameStarted) {
-          setTimeout(enterGamePanel, 500);
-      }
+    // --- NEW: Check for inactivity immediately ---
+    const lastActive = session.lastActive || 0;
+    if (Date.now() - lastActive > INACTIVITY_LIMIT) {
+        console.log("Session expired due to inactivity.");
+        localStorage.removeItem('bingo_session');
+        // Do not return; let it fall through to roomFromUrl check or standard load
     } else {
-      localStorage.removeItem('bingo_session');
+        // Session is fresh, try to connect
+        const snapshot = await db.ref('lobbies/' + session.lobby).get();
+        
+        if (snapshot.exists()) {
+          const data = snapshot.val();
+          // We still keep the server-side expiration just in case
+          if (checkExpiration(data.createdAt)) return;
+          
+          currentLobby = session.lobby;
+          myName = session.name;
+          isHost = (data.host === myName);
+          
+          if (isHost) {
+            db.ref(`lobbies/${currentLobby}/hostActive`).set(true);
+            db.ref(`lobbies/${currentLobby}/hostActive`).onDisconnect().set(false);
+          }
+          setupLobby();
+          if (data.gameState && data.gameState.gameStarted) {
+              setTimeout(enterGamePanel, 500);
+          }
+          return; // Stop here if recovery was successful
+        } else {
+          // Lobby was deleted on server
+          localStorage.removeItem('bingo_session');
+        }
     }
-  } else if (roomFromUrl) {
+  } 
+  
+  // If we didn't recover a session, check URL or load fresh
+  if (roomFromUrl) {
     showScreen('screenJoin');
     document.getElementById('joinCode').value = roomFromUrl.toUpperCase();
   }
@@ -312,7 +323,19 @@ async function handleJoinLobby() {
 }
 
 function setupLobby() {
-  localStorage.setItem('bingo_session', JSON.stringify({ lobby: currentLobby, name: myName, isHost: isHost }));
+  // --- UPDATED: Save with timestamp ---
+  const updateSession = () => {
+      localStorage.setItem('bingo_session', JSON.stringify({ 
+          lobby: currentLobby, 
+          name: myName, 
+          isHost: isHost,
+          lastActive: Date.now() // Update time to right now
+      }));
+  };
+  
+  updateSession(); // Run once immediately
+  setInterval(updateSession, 5 * 60 * 1000); // Run every 5 minutes to keep session alive
+  
   document.getElementById('displayCode').textContent = currentLobby;
   showScreen('screenLobbyRoom');
   
