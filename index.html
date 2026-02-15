@@ -225,6 +225,14 @@ function showScreen(id) {
 /* ================= SESSION RECOVERY ================= */
 window.addEventListener('DOMContentLoaded', async () => {
   const params = new URLSearchParams(window.location.search);
+  
+  // NEW: Check for reset flag immediately
+  if (params.get('reset') === 'true') {
+    localStorage.removeItem('bingo_session');
+    // Remove the query param from URL so it doesn't stay there
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
+
   const roomFromUrl = params.get('room');
   const savedSession = localStorage.getItem('bingo_session');
 
