@@ -11,6 +11,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
   <style>
+    /* --- ORIGINAL BIG BEN MANILA BRANDING --- */
     :root { --london-blue: #002147; --royal-red: #991b1b; }
     .bg-london-blue { background-color: var(--london-blue); }
     .text-london-blue { color: var(--london-blue); }
@@ -67,7 +68,6 @@
     <div class="text-center mb-6">
       <span class="text-slate-400 uppercase text-xs font-bold tracking-widest">Room Code</span>
       <div id="displayCode" class="text-5xl md:text-6xl font-black text-london-blue mt-1">XXXXX</div>
-      <!-- <p class="text-[10px] text-red-400 mt-2 font-bold uppercase">Expires in 3 Hours</p> -->
     </div>
     <div class="flex justify-center mb-6">
         <div id="qrcode" class="p-2 bg-white border-2 border-slate-100 rounded-xl shadow-sm"></div>
@@ -158,7 +158,7 @@
               End Game
             </button>
           </div>
-          <h3 class="font-bold text-slate-400 text-xs uppercase mb-2 tracking-widest border-t pt-2">Players</h3>
+          <h3 class="font-bold text-slate-400 text-xs uppercase mb-2 tracking-widest border-t pt-2">Leaderboard</h3>
           <ul id="gamePlayerList" class="space-y-1 max-h-48 overflow-y-auto pr-2"></ul>
           <div id="jackpotStatus" class="mt-4 text-center p-2 bg-royal-red text-white rounded-lg text-xs font-bold hidden animate-bounce">BLACKOUT MODE</div>
         </div>
@@ -208,8 +208,8 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-const LOBBY_LIFETIME = 3 * 60 * 60 * 1000; // Server lobby life
-const INACTIVITY_LIMIT = 2 * 60 * 60 * 1000; // 2 Hours (Client side)
+const LOBBY_LIFETIME = 3 * 60 * 60 * 1000; 
+const INACTIVITY_LIMIT = 2 * 60 * 60 * 1000; // 2 Hours Inactivity Limit
 let currentLobby = null, myName = null, isHost = false;
 let gameNumbersPool = [], calledNumbers = [], isJackpotMode = false, gameStarted = false;
 let isRolling = false;
@@ -223,7 +223,7 @@ function showScreen(id) {
   window.scrollTo(0,0);
 }
 
-/* ================= SESSION RECOVERY ================= */
+/* ================= SESSION RECOVERY (NEW LOGIC) ================= */
 window.addEventListener('DOMContentLoaded', async () => {
   const params = new URLSearchParams(window.location.search);
   const roomFromUrl = params.get('room');
@@ -231,26 +231,20 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   if (savedSession) {
     const session = JSON.parse(savedSession);
-    
-    // --- NEW: Check for inactivity immediately ---
     const lastActive = session.lastActive || 0;
+    
+    // Check Inactivity
     if (Date.now() - lastActive > INACTIVITY_LIMIT) {
         console.log("Session expired due to inactivity.");
         localStorage.removeItem('bingo_session');
-        // Do not return; let it fall through to roomFromUrl check or standard load
     } else {
-        // Session is fresh, try to connect
         const snapshot = await db.ref('lobbies/' + session.lobby).get();
-        
         if (snapshot.exists()) {
           const data = snapshot.val();
-          // We still keep the server-side expiration just in case
           if (checkExpiration(data.createdAt)) return;
-          
           currentLobby = session.lobby;
           myName = session.name;
           isHost = (data.host === myName);
-          
           if (isHost) {
             db.ref(`lobbies/${currentLobby}/hostActive`).set(true);
             db.ref(`lobbies/${currentLobby}/hostActive`).onDisconnect().set(false);
@@ -259,15 +253,13 @@ window.addEventListener('DOMContentLoaded', async () => {
           if (data.gameState && data.gameState.gameStarted) {
               setTimeout(enterGamePanel, 500);
           }
-          return; // Stop here if recovery was successful
+          return;
         } else {
-          // Lobby was deleted on server
           localStorage.removeItem('bingo_session');
         }
     }
   } 
   
-  // If we didn't recover a session, check URL or load fresh
   if (roomFromUrl) {
     showScreen('screenJoin');
     document.getElementById('joinCode').value = roomFromUrl.toUpperCase();
@@ -323,18 +315,16 @@ async function handleJoinLobby() {
 }
 
 function setupLobby() {
-  // --- UPDATED: Save with timestamp ---
   const updateSession = () => {
       localStorage.setItem('bingo_session', JSON.stringify({ 
           lobby: currentLobby, 
           name: myName, 
           isHost: isHost,
-          lastActive: Date.now() // Update time to right now
+          lastActive: Date.now() 
       }));
   };
-  
-  updateSession(); // Run once immediately
-  setInterval(updateSession, 5 * 60 * 1000); // Run every 5 minutes to keep session alive
+  updateSession();
+  setInterval(updateSession, 5 * 60 * 1000);
   
   document.getElementById('displayCode').textContent = currentLobby;
   showScreen('screenLobbyRoom');
@@ -345,7 +335,7 @@ function setupLobby() {
     const inviteUrl = `${window.location.origin}${window.location.pathname}?room=${currentLobby}`;
     new QRCode(qrContainer, {
         text: inviteUrl, width: 100, height: 100,
-        colorDark : "#002147", colorLight : "#ffffff",
+        colorDark : "#002147", colorLight : "#ffffff", 
         correctLevel : QRCode.CorrectLevel.L
     });
   }
@@ -364,6 +354,8 @@ function setupLobby() {
     if (checkExpiration(data.createdAt)) return;
 
     const players = data.players || [];
+    
+    // RENDER LOBBY LIST (Waiting Room)
     const lobbyList = document.getElementById('playerList');
     if (lobbyList) {
         lobbyList.innerHTML = players.map(p => {
@@ -376,40 +368,74 @@ function setupLobby() {
           return `<li class="p-2 bg-white rounded-lg border border-slate-100 flex justify-between items-center text-xs shadow-sm animate-fade-in"><span class="font-bold text-slate-700">${p}</span><div class="flex items-center gap-1">${isHostUser ? '<span class="text-[7px] bg-london-blue text-white px-2 py-0.5 rounded-full font-black uppercase">HOST</span>' : ''}${kickBtn} ${leaveBtn}</div></li>`;
         }).join('');
     }
-    
-    // Safety check for gameState
-    if (!data.gameState) return;
 
-    gameStarted = data.gameState.gameStarted;
-    calledNumbers = data.gameState.calledNumbers || [];
-    isJackpotMode = data.gameState.isJackpotMode;
+    if (data.gameState) {
+        gameStarted = data.gameState.gameStarted;
+        calledNumbers = data.gameState.calledNumbers || [];
+        isJackpotMode = data.gameState.isJackpotMode;
+        
+        let currentWinners = data.gameState.winners || [];
+        if (typeof currentWinners === 'string') currentWinners = [currentWinners];
+        else if (!Array.isArray(currentWinners)) currentWinners = Object.values(currentWinners);
+
+        currentWinners.forEach(w => {
+            if (!displayedWinners.has(w)) {
+                triggerWinnerPopup(w);
+                displayedWinners.add(w);
+            }
+        });
+
+        // RENDER GAME LIST (With Ranking)
+        updatePlayerUI(players, data.host, currentWinners);
+        render(data.gameState);
+    } else {
+        updatePlayerUI(players, data.host, []);
+    }
+  });
+}
+
+function getOrdinal(n) {
+  const s = ["th", "st", "nd", "rd"];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+
+function updatePlayerUI(players, hostName, winnerList) {
+  const gameList = document.getElementById('gamePlayerList');
+  if (!gameList) return;
+  gameList.innerHTML = players.map(p => {
+    const winnerIndex = winnerList.indexOf(p);
+    const isWinner = winnerIndex !== -1;
+    const isHostUser = (p === hostName);
+    const isMe = (p === myName);
     
-    // --- ROBUST WINNER CHECK ---
-    let currentWinners = data.gameState.winners || [];
-    
-    // Handle Firebase returning string (single) or object (missing keys) instead of array
-    if (typeof currentWinners === 'string') {
-        currentWinners = [currentWinners];
-    } else if (!Array.isArray(currentWinners)) {
-        currentWinners = Object.values(currentWinners);
+    let actionBadge = '';
+    if (isHost && !isMe) {
+        actionBadge = `<button onclick="kickPlayer('${p}')" class="ml-1 bg-red-100 hover:bg-red-200 text-red-600 font-bold text-[8px] rounded-full px-2 py-0.5 border border-red-200 uppercase transition">Kick</button>`;
+    } else if (!isHost && isMe) {
+        actionBadge = `<button onclick="leaveRoom()" class="ml-1 bg-slate-100 hover:bg-slate-200 text-slate-500 font-bold text-[8px] rounded-full px-2 py-0.5 border border-slate-200 uppercase transition">Leave</button>`;
     }
 
-    currentWinners.forEach(w => {
-        if (!displayedWinners.has(w)) {
-            triggerWinnerPopup(w);
-            displayedWinners.add(w);
-        }
-    });
+    let rankBadge = '';
+    if (isWinner) {
+        const rank = winnerIndex + 1;
+        const ordinal = getOrdinal(rank);
+        let colorClass = "bg-slate-100 text-slate-500 border-slate-300"; // Default
+        
+        if (rank === 1) colorClass = "bg-yellow-100 text-yellow-700 border-yellow-400"; // Gold
+        else if (rank === 2) colorClass = "bg-slate-200 text-slate-600 border-slate-400"; // Silver
+        else if (rank === 3) colorClass = "bg-orange-100 text-orange-700 border-orange-300"; // Bronze
+        
+        rankBadge = `<span class="text-[8px] ${colorClass} px-1.5 py-0.5 rounded-full font-black uppercase ml-1 border shadow-sm">${ordinal}</span>`;
+    }
 
-    updatePlayerUI(players, data.host, currentWinners);
-    render(data.gameState);
-  });
+    return `<li class="flex items-center justify-between p-2 rounded-lg border ${isWinner ? 'bg-yellow-50 border-yellow-400' : 'bg-slate-50 border-slate-100'}"><div class="flex items-center gap-2"><div class="w-2 h-2 rounded-full ${isWinner ? 'bg-yellow-500 animate-pulse' : 'bg-green-500'}"></div><span class="text-xs font-bold ${isWinner ? 'text-yellow-900' : 'text-slate-700'}">${p}</span>${rankBadge}</div><div class="flex items-center">${isHostUser ? '<span class="text-[7px] bg-london-blue text-white px-1.5 py-0.5 rounded-full font-black uppercase">HOST</span>' : ''}${actionBadge}</div></li>`;
+  }).join('');
 }
 
 function enterGamePanel() {
   showScreen('gameArea');
   document.getElementById('gameRoomCode').textContent = currentLobby;
-  
   if (isHost) {
     document.getElementById('hostControlsPanel').classList.remove('hidden');
     document.getElementById('btnGameLeave').classList.remove('hidden'); 
@@ -425,7 +451,6 @@ function enterGamePanel() {
   generateCard();
 }
 
-/* ================= GAMEPLAY ================= */
 function triggerStartGame() {
   if (!confirm("Start game?")) return;
   gameNumbersPool = Array.from({length: 75}, (_, i) => i + 1);
@@ -466,21 +491,16 @@ async function leaveRoom(force = false) {
   location.href = window.location.pathname;
 }
 
-/* ================= WINNER POPUP ================= */
 function triggerWinnerPopup(winnerName) {
     document.getElementById('winnerNameDisplay').textContent = winnerName;
     const btn = document.getElementById('modalActionBtn');
-    
-    // Check mode based on GLOBAL state derived from listener
     if (isJackpotMode) {
       btn.textContent = "NEW GAME";
     } else {
       btn.textContent = "KEEP PLAYING";
     }
-
     const modal = document.getElementById('winnerModal');
     modal.classList.remove('hidden');
-    
     confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
 }
 
@@ -488,7 +508,6 @@ function closeWinnerModal() {
     document.getElementById('winnerModal').classList.add('hidden');
 }
 
-/* ================= UI RENDERING ================= */
 function render(state) {
   const display = document.getElementById('bingoCurrent');
   const newNum = state.lastNum || '-';
@@ -567,32 +586,6 @@ function clearCardMarksUI() {
   });
 }
 
-function updatePlayerUI(players, hostName, winnerList) {
-  const gameList = document.getElementById('gamePlayerList');
-  if (!gameList) return;
-  gameList.innerHTML = players.map(p => {
-    const isWinner = winnerList.includes(p);
-    const isHostUser = (p === hostName);
-    const isMe = (p === myName);
-    
-    // BADGE BUTTON: Kick (Host only) or Leave (Me only, non-host)
-    let actionBadge = '';
-    if (isHost && !isMe) {
-        actionBadge = `<button onclick="kickPlayer('${p}')" class="ml-1 bg-red-100 hover:bg-red-200 text-red-600 font-bold text-[8px] rounded-full px-2 py-0.5 border border-red-200 uppercase transition">Kick</button>`;
-    } else if (!isHost && isMe) {
-        actionBadge = `<button onclick="leaveRoom()" class="ml-1 bg-slate-100 hover:bg-slate-200 text-slate-500 font-bold text-[8px] rounded-full px-2 py-0.5 border border-slate-200 uppercase transition">Leave</button>`;
-    }
-
-    return `<li class="flex items-center justify-between p-2 rounded-lg border ${isWinner ? 'bg-yellow-50 border-yellow-400' : 'bg-slate-50 border-slate-100'}"><div class="flex items-center gap-2"><div class="w-2 h-2 rounded-full ${isWinner ? 'bg-yellow-500 animate-pulse' : 'bg-green-500'}"></div><span class="text-xs font-bold ${isWinner ? 'text-yellow-900' : 'text-slate-700'}">${p}</span></div><div class="flex items-center">${isHostUser ? '<span class="text-[7px] bg-london-blue text-white px-1.5 py-0.5 rounded-full font-black uppercase">HOST</span>' : ''}${isWinner ? '<span class="text-[7px] bg-yellow-500 text-white px-1.5 py-0.5 rounded-full font-black uppercase ml-1">WIN</span>' : ''}${actionBadge}</div></li>`;
-  }).join('');
-}
-
-async function kickPlayer(playerToKick) {
-  if (!isHost || !confirm(`Remove ${playerToKick}?`)) return;
-  const snapshot = await db.ref(`lobbies/${currentLobby}/players`).get();
-  await db.ref(`lobbies/${currentLobby}/players`).set((snapshot.val() || []).filter(p => p !== playerToKick));
-}
-
 function generateCard() {
   clearCardMarksUI();
   const ranges = [[1,15],[16,30],[31,45],[46,60],[61,75]];
@@ -614,9 +607,7 @@ function generateCard() {
       } else { 
         td.textContent = val; td.dataset.label = label; 
         td.onclick = () => { 
-            // PREVENT CLICKING THE FREE CELL (Already marked)
             if (r===2 && c===2) return; 
-            
             if (calledNumbers.includes(label)) { 
                 td.classList.toggle('marked'); 
                 checkWin(); 
@@ -632,22 +623,16 @@ function generateCard() {
 }
 
 async function announceWin() {
-  // 1. Show locally immediately (Local First)
+  // Show locally immediately
   if (!displayedWinners.has(myName)) {
       triggerWinnerPopup(myName);
       displayedWinners.add(myName);
   }
-
-  // 2. Update Server (Robust Array Handling)
+  // Robust Server Update
   const snapshot = await db.ref(`lobbies/${currentLobby}/gameState/winners`).get();
   let winners = snapshot.val() || [];
-  
-  if (typeof winners === 'string') {
-      winners = [winners];
-  } else if (!Array.isArray(winners)) {
-      winners = Object.values(winners);
-  }
-
+  if (typeof winners === 'string') winners = [winners];
+  else if (!Array.isArray(winners)) winners = Object.values(winners);
   if (!winners.includes(myName)) {
     winners.push(myName);
     await db.ref(`lobbies/${currentLobby}/gameState/winners`).set(winners);
